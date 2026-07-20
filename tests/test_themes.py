@@ -69,14 +69,16 @@ def test_api_emits_selected_theme() -> None:
 def test_each_theme_has_an_independent_template_and_stylesheet() -> None:
     themes_dir = WEB_DIR / "themes"
     for theme_id in ("ms90", "tube60"):
-        assert (themes_dir / f"{theme_id}-template.js").is_file()
-        assert (themes_dir / f"{theme_id}.css").is_file()
+        theme_dir = themes_dir / theme_id
+        assert (theme_dir / "AGENTS.md").is_file()
+        assert (theme_dir / "template.js").is_file()
+        assert (theme_dir / "style.css").is_file()
 
 
 def test_tube60_is_structurally_different_from_ms90() -> None:
     themes_dir = WEB_DIR / "themes"
-    ms90 = (themes_dir / "ms90-template.js").read_text(encoding="utf-8")
-    tube60 = (themes_dir / "tube60-template.js").read_text(encoding="utf-8")
+    ms90 = (themes_dir / "ms90" / "template.js").read_text(encoding="utf-8")
+    tube60 = (themes_dir / "tube60" / "template.js").read_text(encoding="utf-8")
 
     assert "rack-footer" in ms90
     assert "speaker-cone" not in ms90
@@ -93,7 +95,7 @@ def test_tube60_is_structurally_different_from_ms90() -> None:
 
 def test_tube60_mechanical_selector_has_motion_and_position_feedback() -> None:
     app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
-    tube_css = (WEB_DIR / "themes" / "tube60.css").read_text(encoding="utf-8")
+    tube_css = (WEB_DIR / "themes" / "tube60" / "style.css").read_text(encoding="utf-8")
 
     assert "rollMechanicalIndicator" in app
     assert "updateMechanicalSelector" in app
@@ -106,5 +108,5 @@ def test_tube60_mechanical_selector_has_motion_and_position_feedback() -> None:
 def test_index_is_only_the_shared_theme_host() -> None:
     index = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     assert '<main id="app-shell"></main>' in index
-    assert "ms90-template.js" in index
-    assert "tube60-template.js" in index
+    assert "themes/ms90/template.js" in index
+    assert "themes/tube60/template.js" in index

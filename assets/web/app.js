@@ -49,8 +49,8 @@ const FONT = {
 };
 const GW = 5, GH = 7, GAP = 1;
 const THEME_PATHS = {
-  ms90: "themes/ms90.css",
-  tube60: "themes/tube60.css",
+  ms90: "themes/ms90/style.css",
+  tube60: "themes/tube60/style.css",
 };
 
 function cssVar(name, fallback){

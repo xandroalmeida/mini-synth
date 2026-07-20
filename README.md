@@ -270,10 +270,10 @@ src/
   config/  loader.py  models.py
 assets/web/  index.html  style.css  app.js   # host, defaults e estado comum
              themes/                    # UIs completas e independentes
-               ms90-template.js         # arquitetura do rack digital
-               ms90.css                 # materiais do rack anos 90
-               tube60-template.js       # arquitetura do móvel valvulado
-               tube60.css               # materiais do aparelho anos 60
+               ms90/                     # rack digital + instruções próprias
+                 AGENTS.md  template.js  style.css
+               tube60/                   # móvel valvulado + instruções próprias
+                 AGENTS.md  template.js  style.css
 config/  instruments.yaml
 scripts/ install-ubuntu.sh  build-deb.sh  make-icon.py  midi-monitor.py  midi-debug.py
 tests/   test_*.py
