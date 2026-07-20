@@ -55,10 +55,11 @@ python scripts/midi-monitor.py   # descobre o que cada knob/tecla envia
    NÃO com `border: outset` do QSS (fica chapado e "encavala"). Cada botão
    reserva margem interna para a sombra projetada; ajuste espaçamentos de
    layout junto com essa margem para não colar as fileiras.
-4. **O teclado troca o protocolo dos knobs conforme o banco.** O mesmo knob A1
-   já apareceu como CC 91, CC 1 e **Program Change**. Por isso o app trata
-   Program Change E CC. Não presuma um número fixo; confirme com o
-   `midi-monitor.py` e/ou o log em modo DEBUG.
+4. **O teclado troca o protocolo dos knobs conforme o modo/banco.** Os knobs já
+   apareceram como CCs diferentes E como **Program Change** dependendo do modo.
+   Por isso o app trata Program Change E CC. Não presuma um número fixo; confirme
+   com o `midi-monitor.py` e/ou o log em modo DEBUG. Mapeamento confirmado deste
+   teclado está na armadilha 6.
 5. **Números de banco/programa MIDI só em `config/instruments.yaml`.** Nunca
    espalhe pelo código.
 6. **Navegação por bancos:** A1 troca o **banco** (categoria), A3 troca o
@@ -67,9 +68,9 @@ python scripts/midi-monitor.py   # descobre o que cada knob/tecla envia
    **direto** (`_knob_index`): cada valor de CC = um item (0→1º, 1→2º…) e trava
    no último acima da quantidade — os dois knobs usam a MESMA regra.
    **Neste teclado (confirmado ao vivo): A1 = CC 1, A3 = CC 91; o A2 fica MUDO**
-   (não emite nada neste modo). O `midi-monitor.py` original NÃO mostra Program
-   Change (0xC0) — para descobrir knobs que mandam PC, use um dump cru de todas
-   as mensagens.
+   (não emite nada neste modo). O `midi-monitor.py` já foi corrigido para mostrar
+   **Program Change (0xC0)** também — vários knobs deste teclado mandam PC em vez
+   de CC, então isso é essencial para descobri-los.
 7. **Bateria = percussão (`percussion: true`, GM bank 128).** Instrumentos de
    percussão tocam no **canal 9** (`DRUM_CHANNEL`), não no canal 0, e **sem
    transposição de oitava** (cada tecla é um som fixo de bateria). A troca de
@@ -105,7 +106,7 @@ FluidSynth. `device_manager` emite sinais Qt (`note_on/off`, `control_change`,
 `program_change`); `application` aplica **transposição de oitava** (exceto na
 bateria) e roteia as notas para o **canal do instrumento atual** — canal 0 para
 melódicos, canal 9 para percussão. Assim, qualquer canal do teclado toca o
-instrumento escolhido. Knobs A1/A2 e Program Change trocam banco/instrumento na
+instrumento escolhido. Knobs A1/A3 e Program Change trocam banco/instrumento na
 UI (ver armadilhas 6 e 7).
 
 Instrumentos vivem em **bancos** (`banks:` no `instruments.yaml`): cada banco é

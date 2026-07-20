@@ -94,6 +94,30 @@ banks:
         bank: 0
         program: 19
         icon: "organ"
+      - id: honky_tonk
+        label: "SALOON"
+        display_name: "Piano Saloon"
+        bank: 0
+        program: 3
+        icon: "piano"
+      - id: clavinet
+        label: "CLAVINET"
+        display_name: "Clavinet"
+        bank: 0
+        program: 7
+        icon: "clavinet"
+      - id: rock_organ
+        label: "HAMMOND"
+        display_name: "Órgão Rock"
+        bank: 0
+        program: 18
+        icon: "organ"
+      - id: accordion
+        label: "SANFONA"
+        display_name: "Sanfona"
+        bank: 0
+        program: 21
+        icon: "accordion"
 
   # ---- CORDAS -------------------------------------------------------------
   - id: cordas
@@ -117,11 +141,29 @@ banks:
         bank: 0
         program: 30
         icon: "guitar"
+      - id: guitar_overdrive
+        label: "OVERDRIVE"
+        display_name: "Guitarra Overdrive"
+        bank: 0
+        program: 29
+        icon: "guitar"
+      - id: guitar_muted
+        label: "ABAFADA"
+        display_name: "Guitarra Abafada"
+        bank: 0
+        program: 28
+        icon: "guitar"
       - id: bass
         label: "BAIXO"
         display_name: "Electric Bass"
         bank: 0
         program: 33
+        icon: "bass"
+      - id: bass_pick
+        label: "BAIXO 2"
+        display_name: "Baixo Palheta"
+        bank: 0
+        program: 34
         icon: "bass"
       - id: violin
         label: "VIOLINO"
@@ -245,6 +287,12 @@ banks:
         display_name: "Synth Lead"
         bank: 0
         program: 80
+        icon: "synth"
+      - id: saw_lead
+        label: "SAW LEAD"
+        display_name: "Synth Saw Lead"
+        bank: 0
+        program: 81
         icon: "synth"
       - id: warm_pad
         label: "PAD"
