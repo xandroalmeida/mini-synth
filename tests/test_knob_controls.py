@@ -37,10 +37,12 @@ def test_invalid_cc_raises():
         ControlsConfig.from_dict({"knobs": [{"cc": 200, "action": "volume"}]})
 
 
-def test_real_config_maps_a1_to_instrument():
-    # O instruments.yaml versionado deve ter A1 (CC 1) trocando o instrumento.
+def test_real_config_maps_a1_to_bank_and_a2_to_instrument():
+    # No modelo de bancos: A1 (CC 1) troca o banco; A2 troca o instrumento.
     config = loader.load_app_config()
-    assert config.controls.action_by_cc().get(1) == "instrument"
+    mapping = config.controls.action_by_cc()
+    assert mapping.get(1) == "bank"
+    assert "instrument" in mapping.values()
 
 
 # ---- comportamento no Application ---------------------------------------
@@ -67,27 +69,64 @@ def _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path):
     return app, synth, backend, config
 
 
-def test_knob_a1_selects_instrument_by_position(qapp, monkeypatch, fake_midi_cls, tmp_path):
+def _instrument_cc(config) -> int:
+    """CC do knob de instrumento (A3) definido no config real."""
+    for cc, action in config.controls.action_by_cc().items():
+        if action == "instrument":
+            return cc
+    raise AssertionError("Nenhum knob mapeado para 'instrument' no config.")
+
+
+def test_knob_a1_selects_bank_by_direct_index(qapp, monkeypatch, fake_midi_cls, tmp_path):
+    # Mapeamento direto: cada valor de CC = um banco (0->1º, 1->2º, ...).
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
-    first = config.instruments[0]
-    last = config.instruments[-1]
 
-    app._on_control_change(1, 0)      # knob totalmente à esquerda
-    assert synth.current_instrument is first
+    for i, bank in enumerate(config.banks):
+        app._on_control_change(1, i)   # valor i -> (i+1)-ésimo banco
+        assert app._current_bank is bank
+        assert synth.current_instrument is bank.instruments[0]
 
-    app._on_control_change(1, 127)    # totalmente à direita
-    assert synth.current_instrument is last
 
-    # posição intermediária cai em um instrumento do meio
-    app._on_control_change(1, 64)
-    mid = synth.current_instrument
-    assert mid is not first and mid is not last
+def test_knob_a1_clamps_at_last_bank(qapp, monkeypatch, fake_midi_cls, tmp_path):
+    # Acima da quantidade de bancos, trava no último (não altera mais).
+    app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
+    n = len(config.banks)
+    app._on_control_change(1, n - 1)
+    assert app._current_bank is config.banks[-1]
+    for value in (n, n + 3, 100, 127):
+        app._on_control_change(1, value)
+        assert app._current_bank is config.banks[-1]
+
+
+def test_knob_a3_selects_instrument_by_direct_index(qapp, monkeypatch, fake_midi_cls, tmp_path):
+    app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
+    cc = _instrument_cc(config)
+    bank = next(b for b in config.banks if len(b.instruments) > 1)
+    app._select_bank(bank)
+
+    # valor k -> (k+1)-ésimo instrumento do banco
+    for i, inst in enumerate(bank.instruments):
+        app._on_control_change(cc, i)
+        assert synth.current_instrument is inst
+
+
+def test_knob_a3_clamps_at_last_instrument(qapp, monkeypatch, fake_midi_cls, tmp_path):
+    # Passou da quantidade de instrumentos do banco -> fica no último.
+    app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
+    cc = _instrument_cc(config)
+    bank = next(b for b in config.banks if len(b.instruments) > 1)
+    app._select_bank(bank)
+    n = len(bank.instruments)
+    for value in (n - 1, n, n + 2, 127):
+        app._on_control_change(cc, value)
+        assert synth.current_instrument is bank.instruments[-1]
 
 
 def test_knob_a1_updates_display(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
-    app._on_control_change(1, 127)
-    assert app.window.display_value.text() == config.instruments[-1].display_name.upper()
+    app._on_control_change(1, 127)    # trava no último banco -> mostra seu 1º instrumento
+    expected = config.banks[-1].instruments[0].display_name.upper()
+    assert app.window.display_value.text() == expected
 
 
 def test_unmapped_cc_is_forwarded_to_synth(qapp, monkeypatch, fake_midi_cls, tmp_path):
@@ -104,42 +143,43 @@ def test_mapped_instrument_cc_not_forwarded_as_synth_cc(qapp, monkeypatch, fake_
     assert not any(cc == 1 for (_ch, cc, _v) in backend.control_changes)
 
 
-# ---- Program Change (knob A1 em modo PC) --------------------------------
-def test_program_change_selects_instrument(qapp, monkeypatch, fake_midi_cls, tmp_path):
+# ---- Program Change (knob A1 em modo PC) troca o BANCO ------------------
+def test_program_change_selects_bank(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
     app._on_program_change(0)
-    assert synth.current_instrument is config.instruments[0]
+    assert app._current_bank is config.banks[0]
     app._on_program_change(127)
-    assert synth.current_instrument is config.instruments[-1]
+    assert app._current_bank is config.banks[-1]
 
 
-def test_program_change_maps_number_to_instrument_1_to_n(qapp, monkeypatch, fake_midi_cls, tmp_path):
+def test_program_change_maps_number_to_bank_1_to_n(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
-    n = len(config.instruments)
-    # valor 1 -> 1º instrumento, ..., valor N -> N-ésimo
+    n = len(config.banks)
+    # valor 1 -> 1º banco, ..., valor N -> N-ésimo
     for number in range(1, n + 1):
         app._on_program_change(number)
-        assert synth.current_instrument is config.instruments[number - 1]
+        assert app._current_bank is config.banks[number - 1]
 
 
-def test_program_change_above_count_stays_on_last(qapp, monkeypatch, fake_midi_cls, tmp_path):
+def test_program_change_above_count_stays_on_last_bank(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
-    n = len(config.instruments)
-    app._on_program_change(n + 1)      # 13, com 12 instrumentos
-    assert synth.current_instrument is config.instruments[-1]
+    n = len(config.banks)
+    app._on_program_change(n + 1)
+    assert app._current_bank is config.banks[-1]
     app._on_program_change(50)
-    assert synth.current_instrument is config.instruments[-1]
+    assert app._current_bank is config.banks[-1]
     app._on_program_change(127)
-    assert synth.current_instrument is config.instruments[-1]
+    assert app._current_bank is config.banks[-1]
 
 
 def test_program_change_can_be_disabled(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
-    app._config.controls.program_change_selects_instrument = False
+    app._config.controls.program_change_selects_bank = False
+    app._current_bank = None
     app._on_program_change(0)
     app._on_program_change(127)
-    # nada deve ter sido selecionado por Program Change
-    assert backend.last_selection is None
+    # nada deve ter mudado de banco por Program Change
+    assert app._current_bank is None
 
 
 def test_device_manager_emits_program_change(qapp, monkeypatch, fake_midi_cls):

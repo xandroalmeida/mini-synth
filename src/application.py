@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, QTimer
 from .audio.factory import create_backend
 from .audio.synthesizer import Synthesizer, SynthError
 from .config import loader
-from .config.models import AppConfig, Instrument, UserSettings
+from .config.models import AppConfig, Bank, Instrument, UserSettings
 from .midi.device_manager import (
     STATE_CONNECTED,
     STATE_ERROR,
@@ -29,6 +29,18 @@ def _scale(value: int, top: int) -> int:
     return round(max(0, min(127, value)) / 127 * top)
 
 
+def _knob_index(value: int, count: int) -> int:
+    """Índice direto a partir do valor de CC: cada valor = um item.
+
+    Valor 0 -> 1º item, 1 -> 2º, ..., (count-1) -> último. A partir da
+    quantidade de itens, permanece no último (não avança nem dá a volta).
+    Usado igualmente por A1 (bancos) e A3 (instrumentos).
+    """
+    if count <= 0:
+        return 0
+    return max(0, min(count - 1, value))
+
+
 class Application(QObject):
     """Controlador central. Não contém lógica de síntese nem de UI, só as liga."""
 
@@ -41,8 +53,10 @@ class Application(QObject):
         self._soundfont_path: str = ""
         self._audio_ready = False
 
-        # Mapa {numero_cc: acao} dos knobs configurados (ex.: A1 -> instrument).
+        # Mapa {numero_cc: acao} dos knobs configurados (ex.: A1 -> bank).
         self._knob_actions = config.controls.action_by_cc()
+        # Banco atualmente exibido (A1 troca de banco; A2, de instrumento).
+        self._current_bank: Bank | None = None
 
         self.window = MainWindow(config)
         self._midi = MidiDeviceManager(preferred_device=settings.preferred_midi_device)
@@ -117,6 +131,11 @@ class Application(QObject):
         instrument = self._pick_initial_instrument()
         self._synth.select_instrument(instrument)
 
+        # Mostra o banco que contém o instrumento inicial.
+        self._current_bank = (
+            self._config.bank_of_instrument(instrument) or self._config.banks[0]
+        )
+        self.window.set_current_bank(self._current_bank)
         self.window.set_current_instrument(instrument)
         self.window.control_panel.set_volume(self._synth.volume)
         self.window.control_panel.set_reverb(self._synth.reverb)
@@ -136,6 +155,7 @@ class Application(QObject):
     # ------------------------------------------------------------------
     def _wire_ui(self) -> None:
         self.window.instrument_selected.connect(self._on_instrument_selected)
+        self.window.bank_selected.connect(self._on_bank_selected)
         self.window.config_requested.connect(self._on_config_requested)
         self.window.retry_requested.connect(self._on_retry)
 
@@ -169,8 +189,33 @@ class Application(QObject):
         if self._synth is not None:
             self._synth.select_instrument(instrument)
         self.window.set_current_instrument(instrument)
+        # Mantém o banco em sincronia com o instrumento escolhido.
+        bank = self._config.bank_of_instrument(instrument)
+        if bank is not None and bank is not self._current_bank:
+            self._current_bank = bank
+            self.window.set_current_bank(bank)
         self._settings.last_instrument = instrument.id
+        if self._current_bank is not None:
+            self._settings.last_bank = self._current_bank.id
         self._persist()
+
+    def _on_bank_selected(self, bank_id: str) -> None:
+        self._select_bank(self._config.bank_by_id(bank_id))
+
+    def _select_bank(self, bank: Bank | None) -> None:
+        """Troca o banco exibido e garante um instrumento dele tocando."""
+        if bank is None:
+            return
+        self._current_bank = bank
+        self.window.set_current_bank(bank)
+        self._settings.last_bank = bank.id
+        cur = self._synth.current_instrument if self._synth is not None else None
+        already_in_bank = cur is not None and self._config.bank_of_instrument(cur) is bank
+        if not already_in_bank and bank.instruments:
+            # Ao entrar num banco novo, já toca o 1º instrumento dele.
+            self._on_instrument_selected(bank.instruments[0])
+        else:
+            self._persist()
 
     def _on_volume(self, direction: int) -> None:
         if self._synth is None:
@@ -225,7 +270,9 @@ class Application(QObject):
             # CC não mapeado (pedal de sustain, etc.) segue para o synth.
             self._synth.handle_control_change(control, value)
             return
-        if action == "instrument":
+        if action == "bank":
+            self._knob_change_bank(value)
+        elif action == "instrument":
             self._knob_change_instrument(value)
         elif action == "volume":
             self._settings.volume = self._synth.set_volume(_scale(value, 100))
@@ -242,35 +289,45 @@ class Application(QObject):
             self._persist()
 
     def _on_program_change(self, program: int) -> None:
-        """Program Change do teclado (ex.: knob A1 em modo PC) troca o instrumento.
+        """Program Change do teclado (ex.: knob A1 em modo PC) troca o BANCO.
 
-        Mapeamento direto: valor 1 -> 1º instrumento, ..., valor 12 -> 12º.
-        Acima do número de instrumentos, permanece no último (não avança).
+        O A1 é o seletor de banco; alguns modos do teclado o mandam como
+        Program Change em vez de CC. Mapeamento direto: valor 1 -> 1º banco,
+        ..., valor N -> N-ésimo. Fora da faixa, fica no extremo.
         """
         if self._synth is None:
             return
         logger.debug("Program Change %d recebido", program)
-        if self._config.controls.program_change_selects_instrument:
-            self._select_instrument_by_number(program)
+        if self._config.controls.program_change_selects_bank:
+            self._select_bank_by_number(program)
 
-    def _select_instrument_by_number(self, number: int) -> None:
-        """Seleciona o instrumento pelo número 1..N; fora da faixa fica no extremo."""
-        instruments = self._config.instruments
-        if not instruments:
+    def _select_bank_by_number(self, number: int) -> None:
+        """Seleciona o banco pelo número 1..N; fora da faixa fica no extremo."""
+        banks = self._config.banks
+        if not banks:
             return
-        index = max(0, min(len(instruments) - 1, number - 1))
-        instrument = instruments[index]
-        if self._synth is not None and self._synth.current_instrument is instrument:
+        index = max(0, min(len(banks) - 1, number - 1))
+        bank = banks[index]
+        if bank is self._current_bank:
             return
-        self._on_instrument_selected(instrument)
+        self._select_bank(bank)
+
+    def _knob_change_bank(self, value: int) -> None:
+        """Gira o knob A1 pelos bancos: cada valor = um banco, trava no último."""
+        banks = self._config.banks
+        if not banks:
+            return
+        bank = banks[_knob_index(value, len(banks))]
+        if bank is self._current_bank:
+            return
+        self._select_bank(bank)
 
     def _knob_change_instrument(self, value: int) -> None:
-        """Gira o knob A1 pelos instrumentos (posição absoluta 0..127)."""
-        instruments = self._config.instruments
-        if not instruments:
+        """Gira o knob A3 pelos instrumentos do banco: cada valor = um, trava no último."""
+        bank = self._current_bank or (self._config.banks[0] if self._config.banks else None)
+        if bank is None or not bank.instruments:
             return
-        index = min(len(instruments) - 1, round(value / 127 * (len(instruments) - 1)))
-        instrument = instruments[index]
+        instrument = bank.instruments[_knob_index(value, len(bank.instruments))]
         # Só troca quando realmente muda de instrumento (evita repetição).
         if self._synth is not None and self._synth.current_instrument is instrument:
             return

@@ -24,8 +24,12 @@ from ..config.models import AudioConfig, Instrument
 
 logger = logging.getLogger(__name__)
 
-#: Canal MIDI para o qual todas as notas do teclado são roteadas.
+#: Canal MIDI para o qual as notas de instrumentos melódicos são roteadas.
 PLAY_CHANNEL = 0
+
+#: Canal MIDI de percussão (GM: canal 10, índice 9). Kits de bateria tocam
+#: aqui — cada tecla vira um som de bateria, sem transposição de oitava.
+DRUM_CHANNEL = 9
 
 #: Faixa de oitavas permitida (em oitavas de transposição).
 MIN_OCTAVE = -2
@@ -85,6 +89,8 @@ class Synthesizer:
         self._audio = audio
         self._sfid: int | None = None
         self._current: Instrument | None = None
+        #: Canal em que o instrumento atual toca (0 melódico, 9 percussão).
+        self._play_channel = PLAY_CHANNEL
         self._volume = 70
         self._reverb = 25
         self._octave = 0
@@ -122,6 +128,11 @@ class Synthesizer:
         return self._current
 
     @property
+    def play_channel(self) -> int:
+        """Canal MIDI em que o instrumento atual está tocando."""
+        return self._play_channel
+
+    @property
     def volume(self) -> int:
         return self._volume
 
@@ -135,21 +146,30 @@ class Synthesizer:
 
     # ---- seleção de instrumento ---------------------------------------
     def select_instrument(self, instrument: Instrument) -> None:
-        """Envia Bank Select + Program Change para o canal de execução."""
+        """Envia Bank Select + Program Change para o canal do instrumento.
+
+        Instrumentos de percussão tocam no :data:`DRUM_CHANNEL`; os demais no
+        :data:`PLAY_CHANNEL`.
+        """
+        channel = DRUM_CHANNEL if instrument.percussion else PLAY_CHANNEL
         if self._sfid is None:
             # Guarda a escolha; será aplicada quando a soundfont carregar.
             self._current = instrument
+            self._play_channel = channel
             logger.debug("Instrumento pendente até soundfont carregar: %s", instrument.id)
             return
         self._backend.program_select(
-            PLAY_CHANNEL, self._sfid, instrument.bank, instrument.program
+            channel, self._sfid, instrument.bank, instrument.program
         )
         self._current = instrument
+        self._play_channel = channel
         logger.info(
-            "Instrumento: %s (bank=%d program=%d)",
+            "Instrumento: %s (canal=%d bank=%d program=%d%s)",
             instrument.display_name,
+            channel,
             instrument.bank,
             instrument.program,
+            " percussão" if instrument.percussion else "",
         )
 
     # ---- volume --------------------------------------------------------
@@ -197,7 +217,13 @@ class Synthesizer:
         return self.set_octave(0)
 
     def transpose(self, note: int) -> int | None:
-        """Aplica a transposição de oitava. Retorna ``None`` se sair de 0..127."""
+        """Aplica a transposição de oitava. Retorna ``None`` se sair de 0..127.
+
+        Na bateria a nota é a "identidade" do som (bumbo, caixa…), então a
+        transposição de oitava não se aplica: a nota passa intacta.
+        """
+        if self._current is not None and self._current.percussion:
+            return note
         transposed = note + 12 * self._octave
         if 0 <= transposed <= 127:
             return transposed
@@ -210,12 +236,12 @@ class Synthesizer:
             return
         transposed = self.transpose(note)
         if transposed is not None:
-            self._backend.note_on(PLAY_CHANNEL, transposed, velocity)
+            self._backend.note_on(self._play_channel, transposed, velocity)
 
     def handle_note_off(self, note: int) -> None:
         transposed = self.transpose(note)
         if transposed is not None:
-            self._backend.note_off(PLAY_CHANNEL, transposed)
+            self._backend.note_off(self._play_channel, transposed)
 
     def handle_control_change(self, control: int, value: int) -> None:
         self._backend.control_change(PLAY_CHANNEL, control, value)
@@ -241,5 +267,5 @@ class Synthesizer:
         instrumento atualmente selecionado.
         """
         for note in notes:
-            self._backend.note_on(PLAY_CHANNEL, note, 100)
-            self._backend.note_off(PLAY_CHANNEL, note)
+            self._backend.note_on(self._play_channel, note, 100)
+            self._backend.note_off(self._play_channel, note)

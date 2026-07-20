@@ -61,6 +61,19 @@ python scripts/midi-monitor.py   # descobre o que cada knob/tecla envia
    `midi-monitor.py` e/ou o log em modo DEBUG.
 5. **Números de banco/programa MIDI só em `config/instruments.yaml`.** Nunca
    espalhe pelo código.
+6. **Navegação por bancos:** A1 troca o **banco** (categoria), A3 troca o
+   **instrumento** dentro do banco. Program Change do teclado (modo alternativo
+   do A1) também troca o **banco** (`program_change_selects_bank`). Mapeamento é
+   **direto** (`_knob_index`): cada valor de CC = um item (0→1º, 1→2º…) e trava
+   no último acima da quantidade — os dois knobs usam a MESMA regra.
+   **Neste teclado (confirmado ao vivo): A1 = CC 1, A3 = CC 91; o A2 fica MUDO**
+   (não emite nada neste modo). O `midi-monitor.py` original NÃO mostra Program
+   Change (0xC0) — para descobrir knobs que mandam PC, use um dump cru de todas
+   as mensagens.
+7. **Bateria = percussão (`percussion: true`, GM bank 128).** Instrumentos de
+   percussão tocam no **canal 9** (`DRUM_CHANNEL`), não no canal 0, e **sem
+   transposição de oitava** (cada tecla é um som fixo de bateria). A troca de
+   canal fica encapsulada em `Synthesizer.select_instrument`.
 
 ## Arquitetura (mapa rápido)
 
@@ -89,9 +102,17 @@ src/
 
 O app **intercepta** o MIDI (rtmidi), não deixa o teclado tocar direto no
 FluidSynth. `device_manager` emite sinais Qt (`note_on/off`, `control_change`,
-`program_change`); `application` aplica **transposição de oitava** e roteia tudo
-para o **canal 0** do synth (assim, qualquer canal do teclado toca o instrumento
-escolhido). Program Change / CC mapeados trocam o instrumento na UI.
+`program_change`); `application` aplica **transposição de oitava** (exceto na
+bateria) e roteia as notas para o **canal do instrumento atual** — canal 0 para
+melódicos, canal 9 para percussão. Assim, qualquer canal do teclado toca o
+instrumento escolhido. Knobs A1/A2 e Program Change trocam banco/instrumento na
+UI (ver armadilhas 6 e 7).
+
+Instrumentos vivem em **bancos** (`banks:` no `instruments.yaml`): cada banco é
+uma categoria (TECLAS, SOPROS, BATERIA…). Na UI, uma fileira de abas no topo
+troca o banco (`MainWindow`: um `QStackedWidget` com uma grade por banco);
+`AppConfig.instruments` continua achatando tudo numa lista. O formato antigo
+(lista plana `instruments:`) ainda carrega — vira um banco "default".
 
 Sinais Qt emitidos da thread do rtmidi chegam à thread da UI por conexão
 enfileirada (funciona; já testado cross-thread).

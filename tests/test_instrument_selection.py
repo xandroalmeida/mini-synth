@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.audio.mock_backend import MockBackend
-from src.audio.synthesizer import PLAY_CHANNEL, Synthesizer
+from src.audio.synthesizer import DRUM_CHANNEL, PLAY_CHANNEL, Synthesizer
 from src.config.models import AudioConfig, Instrument
 
 
@@ -50,3 +50,35 @@ def test_play_test_sequence_uses_current_channel(synth: Synthesizer, backend, pi
     synth.play_test_sequence((60, 62))
     assert (PLAY_CHANNEL, 60, 100) in backend.notes_on
     assert (PLAY_CHANNEL, 62) in backend.notes_off
+
+
+# ---- percussão (bateria) -------------------------------------------------
+def _drum_kit() -> Instrument:
+    return Instrument(id="drums", label="BATERIA", display_name="Bateria",
+                      bank=128, program=0, percussion=True)
+
+
+def test_percussion_selects_on_drum_channel(synth: Synthesizer, backend):
+    synth.select_instrument(_drum_kit())
+    sel = backend.last_selection
+    assert sel.channel == DRUM_CHANNEL
+    assert sel.bank == 128
+    assert synth.play_channel == DRUM_CHANNEL
+
+
+def test_percussion_notes_route_to_drum_channel_without_transpose(synth: Synthesizer, backend):
+    synth.set_octave(2)  # oitava alta não deve afetar a bateria
+    synth.select_instrument(_drum_kit())
+    synth.handle_note_on(38, 100)   # 38 = caixa (GM)
+    assert (DRUM_CHANNEL, 38, 100) in backend.notes_on
+    synth.handle_note_off(38)
+    assert (DRUM_CHANNEL, 38) in backend.notes_off
+
+
+def test_switching_from_drums_back_to_melodic_restores_channel(synth: Synthesizer, backend, piano):
+    synth.select_instrument(_drum_kit())
+    assert synth.play_channel == DRUM_CHANNEL
+    synth.select_instrument(piano)
+    assert synth.play_channel == PLAY_CHANNEL
+    synth.handle_note_on(60, 100)
+    assert (PLAY_CHANNEL, 60, 100) in backend.notes_on

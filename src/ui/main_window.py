@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..config.models import AppConfig, Instrument
+from ..config.models import AppConfig, Bank, Instrument
 from .buttons import PanelButton
 from .control_panel import ControlPanel
 from .decorations import Screw
@@ -39,6 +39,7 @@ class MainWindow(QWidget):
     """A tela do instrumento. O :class:`Application` faz toda a fiação."""
 
     instrument_selected = Signal(Instrument)
+    bank_selected = Signal(str)  # id do banco
     config_requested = Signal()
     retry_requested = Signal()
 
@@ -46,6 +47,8 @@ class MainWindow(QWidget):
         super().__init__(parent)
         self._config = config
         self._buttons: dict[str, InstrumentButton] = {}
+        self._bank_buttons: dict[str, PanelButton] = {}
+        self._bank_pages: dict[str, int] = {}
 
         self.setObjectName("RootPanel")
         self.setWindowTitle("Mini Synth")
@@ -74,7 +77,8 @@ class MainWindow(QWidget):
 
         layout.addWidget(self._build_header())
         layout.addWidget(self._build_display())
-        layout.addWidget(self._build_instrument_grid(), stretch=1)
+        layout.addWidget(self._build_bank_tabs())
+        layout.addWidget(self._build_instrument_stack(), stretch=1)
         self.control_panel = ControlPanel()
         layout.addWidget(self.control_panel)
         return page
@@ -125,7 +129,33 @@ class MainWindow(QWidget):
         box.addWidget(self.display_value, stretch=1)
         return card
 
-    def _build_instrument_grid(self) -> QWidget:
+    def _build_bank_tabs(self) -> QWidget:
+        """Fileira de bancos (A1). Sempre visível; um toque troca de banco."""
+        bar = QFrame()
+        bar.setObjectName("BankTabs")
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(8, 6, 8, 6)
+        row.setSpacing(8)
+        for bank in self._config.banks:
+            # role="dark": a aba do banco ATIVO acende em âmbar (como os
+            # instrumentos), deixando claro qual banco está selecionado.
+            btn = PanelButton(bank.label, role="dark", font_size=14)
+            btn.setMinimumHeight(42)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            btn.clicked.connect(lambda _=False, bid=bank.id: self.bank_selected.emit(bid))
+            self._bank_buttons[bank.id] = btn
+            row.addWidget(btn)
+        return bar
+
+    def _build_instrument_stack(self) -> QWidget:
+        """Uma página de grade por banco; só a do banco atual fica visível."""
+        self._grid_stack = QStackedWidget()
+        for index, bank in enumerate(self._config.banks):
+            self._grid_stack.addWidget(self._build_bank_grid(bank))
+            self._bank_pages[bank.id] = index
+        return self._grid_stack
+
+    def _build_bank_grid(self, bank: Bank) -> QWidget:
         card = QFrame()
         card.setObjectName("ControlsCard")
         grid = QGridLayout(card)
@@ -134,7 +164,7 @@ class MainWindow(QWidget):
         grid.setVerticalSpacing(12)
 
         columns = max(1, self._config.interface.columns)
-        for i, instrument in enumerate(self._config.instruments):
+        for i, instrument in enumerate(bank.instruments):
             button = InstrumentButton(instrument)
             button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
             button.selected.connect(self.instrument_selected)
@@ -179,6 +209,14 @@ class MainWindow(QWidget):
         self.display_value.setText(instrument.display_name.upper())
         for inst_id, button in self._buttons.items():
             button.set_selected(inst_id == instrument.id)
+
+    def set_current_bank(self, bank: Bank) -> None:
+        """Acende a aba do banco e mostra a grade dele."""
+        for bank_id, button in self._bank_buttons.items():
+            button.setSelected(bank_id == bank.id)
+        index = self._bank_pages.get(bank.id)
+        if index is not None:
+            self._grid_stack.setCurrentIndex(index)
 
     def set_midi_status(self, state: str, message: str) -> None:
         self.midi_indicator.set_state(state, message)

@@ -93,7 +93,12 @@ class InterfaceConfig:
 
 @dataclass(slots=True)
 class Instrument:
-    """Um instrumento selecionável — a única fonte de bank/program MIDI."""
+    """Um instrumento selecionável — a única fonte de bank/program MIDI.
+
+    ``percussion=True`` marca um kit de bateria/percussão (GM bank 128): ele
+    toca no canal de percussão e cada tecla vira um som diferente, sem
+    transposição de oitava.
+    """
 
     id: str
     label: str
@@ -101,6 +106,7 @@ class Instrument:
     bank: int = 0
     program: int = 0
     icon: str = ""
+    percussion: bool = False
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Instrument":
@@ -118,11 +124,39 @@ class Instrument:
             bank=bank,
             program=program,
             icon=str(data.get("icon", "")),
+            percussion=bool(data.get("percussion", False)),
+        )
+
+
+@dataclass(slots=True)
+class Bank:
+    """Um banco/categoria de instrumentos (ex.: TECLAS, SOPROS, BATERIA).
+
+    Bancos agrupam instrumentos para não lotar a tela: o knob A1 troca de
+    banco, o A2 troca o instrumento dentro do banco selecionado.
+    """
+
+    id: str
+    label: str
+    instruments: list["Instrument"] = field(default_factory=list)
+    icon: str = ""
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Bank":
+        ctx = f"banco '{data.get('id', '?')}'"
+        raw = data.get("instruments") or []
+        if not raw:
+            raise ConfigError(f"O {ctx} não tem instrumentos.")
+        return cls(
+            id=str(_require(data, "id", "banks")),
+            label=str(_require(data, "label", ctx)),
+            instruments=[Instrument.from_dict(item) for item in raw],
+            icon=str(data.get("icon", "")),
         )
 
 
 #: Ações que um knob (MIDI CC) pode disparar na interface.
-KNOB_ACTIONS = ("instrument", "volume", "reverb", "octave", "none")
+KNOB_ACTIONS = ("bank", "instrument", "volume", "reverb", "octave", "none")
 
 
 @dataclass(slots=True)
@@ -152,18 +186,22 @@ class ControlsConfig:
 
     knobs: list[KnobControl] = field(default_factory=list)
     #: Se um Program Change vindo do teclado (ex.: knob A1 em modo PC) deve
-    #: trocar o instrumento na tela.
-    program_change_selects_instrument: bool = True
+    #: trocar o BANCO na tela. O A1 é o seletor de banco; quando o teclado o
+    #: envia como Program Change em vez de CC, tratamos igual.
+    program_change_selects_bank: bool = True
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "ControlsConfig":
         data = data or {}
         knobs = [KnobControl.from_dict(item) for item in (data.get("knobs") or [])]
+        # Aceita a chave antiga (…_instrument) por compatibilidade.
+        selects_bank = data.get(
+            "program_change_selects_bank",
+            data.get("program_change_selects_instrument", True),
+        )
         return cls(
             knobs=knobs,
-            program_change_selects_instrument=bool(
-                data.get("program_change_selects_instrument", True)
-            ),
+            program_change_selects_bank=bool(selects_bank),
         )
 
     def action_by_cc(self) -> dict[int, str]:
@@ -179,36 +217,75 @@ class AppConfig:
     audio: AudioConfig
     midi: MidiConfig
     interface: InterfaceConfig
-    instruments: list[Instrument] = field(default_factory=list)
+    banks: list[Bank] = field(default_factory=list)
     controls: ControlsConfig = field(default_factory=ControlsConfig)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AppConfig":
         if not isinstance(data, dict):
             raise ConfigError("O arquivo de configuração está vazio ou inválido.")
-        raw_instruments = data.get("instruments") or []
-        if not raw_instruments:
-            raise ConfigError("Nenhum instrumento definido na configuração.")
-        instruments = [Instrument.from_dict(item) for item in raw_instruments]
 
-        ids = [inst.id for inst in instruments]
+        raw_banks = data.get("banks")
+        if raw_banks:
+            banks = [Bank.from_dict(item) for item in raw_banks]
+        else:
+            # Compatibilidade: lista plana de 'instruments' vira um único banco.
+            raw_instruments = data.get("instruments") or []
+            if not raw_instruments:
+                raise ConfigError("Nenhum instrumento definido na configuração.")
+            banks = [
+                Bank(
+                    id="default",
+                    label="INSTRUMENTOS",
+                    instruments=[Instrument.from_dict(i) for i in raw_instruments],
+                )
+            ]
+
+        all_instruments = [inst for bank in banks for inst in bank.instruments]
+        if not all_instruments:
+            raise ConfigError("Nenhum instrumento definido na configuração.")
+
+        ids = [inst.id for inst in all_instruments]
         duplicates = {i for i in ids if ids.count(i) > 1}
         if duplicates:
             raise ConfigError(f"IDs de instrumento duplicados: {', '.join(sorted(duplicates))}.")
+
+        bank_ids = [bank.id for bank in banks]
+        dup_banks = {b for b in bank_ids if bank_ids.count(b) > 1}
+        if dup_banks:
+            raise ConfigError(f"IDs de banco duplicados: {', '.join(sorted(dup_banks))}.")
 
         return cls(
             soundfont=SoundfontConfig.from_dict(_require(data, "soundfont", "configuração")),
             audio=AudioConfig.from_dict(data.get("audio")),
             midi=MidiConfig.from_dict(data.get("midi")),
             interface=InterfaceConfig.from_dict(data.get("interface")),
-            instruments=instruments,
+            banks=banks,
             controls=ControlsConfig.from_dict(data.get("controls")),
         )
+
+    @property
+    def instruments(self) -> list[Instrument]:
+        """Lista plana de todos os instrumentos, na ordem dos bancos."""
+        return [inst for bank in self.banks for inst in bank.instruments]
 
     def instrument_by_id(self, instrument_id: str) -> Instrument | None:
         for inst in self.instruments:
             if inst.id == instrument_id:
                 return inst
+        return None
+
+    def bank_by_id(self, bank_id: str) -> Bank | None:
+        for bank in self.banks:
+            if bank.id == bank_id:
+                return bank
+        return None
+
+    def bank_of_instrument(self, instrument: Instrument) -> Bank | None:
+        """Retorna o banco que contém o instrumento (comparando por id)."""
+        for bank in self.banks:
+            if any(inst.id == instrument.id for inst in bank.instruments):
+                return bank
         return None
 
 
@@ -220,6 +297,7 @@ class UserSettings:
     reverb: int = 25
     octave: int = 0
     last_instrument: str = ""
+    last_bank: str = ""
     last_soundfont: str = ""
     preferred_midi_device: str = ""
     fullscreen: bool = False
@@ -242,6 +320,7 @@ class UserSettings:
             reverb=int(data.get("reverb", 25)),
             octave=int(data.get("octave", 0)),
             last_instrument=str(data.get("last_instrument", "") or ""),
+            last_bank=str(data.get("last_bank", "") or ""),
             last_soundfont=str(data.get("last_soundfont", "") or ""),
             preferred_midi_device=str(data.get("preferred_midi_device", "") or ""),
             fullscreen=bool(data.get("fullscreen", False)),
@@ -253,6 +332,7 @@ class UserSettings:
             "reverb": self.reverb,
             "octave": self.octave,
             "last_instrument": self.last_instrument,
+            "last_bank": self.last_bank,
             "last_soundfont": self.last_soundfont,
             "preferred_midi_device": self.preferred_midi_device,
             "fullscreen": self.fullscreen,

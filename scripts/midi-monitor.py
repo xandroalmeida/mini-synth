@@ -85,6 +85,19 @@ def main() -> int:
                 rec[4] = value
                 name = CC_NAMES.get(cc, "knob/controle")
                 print(f"  CC {cc:>3}  = {value:>3}   (canal {channel}, {name})")
+            elif status == 0xC0 and len(data) >= 2:  # Program Change
+                # Alguns knobs (ex.: A1 deste Holtek) mandam PC em vez de CC.
+                program = data[1]
+                key = -1  # bucket único para PC no resumo (cc "virtual" -1)
+                if key not in seen:
+                    order += 1
+                    seen[key] = [order, 0, program, program, program]
+                rec = seen[key]
+                rec[1] += 1
+                rec[2] = min(rec[2], program)
+                rec[3] = max(rec[3], program)
+                rec[4] = program
+                print(f"  PROGRAM CHANGE = {program:>3}   (canal {channel})")
             elif status == 0x90 and len(data) >= 3 and data[2] > 0:
                 print(f"  NOTE ON   {data[1]:>3} ({note_name(data[1])})  vel {data[2]}")
             elif status in (0x80, 0x90) and len(data) >= 3:
@@ -103,10 +116,14 @@ def main() -> int:
     else:
         print("Ordem em que apareceram (gire A1, A2, ... nessa ordem para mapear):\n")
         for cc, (ordem, count, lo, hi, last) in sorted(seen.items(), key=lambda x: x[1][0]):
+            if cc == -1:  # bucket do Program Change
+                print(f"  {ordem:>2}º  →  PROGRAM CHANGE   ({count} msgs, faixa {lo}..{hi})")
+                continue
             name = CC_NAMES.get(cc, "")
             extra = f"  [{name}]" if name else ""
             print(f"  {ordem:>2}º  →  CC {cc:>3}   ({count} msgs, faixa {lo}..{hi}){extra}")
-        print("\nAnote qual CC corresponde ao knob A1 — é ele que vai trocar o instrumento.")
+        print("\nNo modelo de bancos: mapeie A1 (banco) e o knob do instrumento em")
+        print("'controls.knobs' do instruments.yaml (action: bank / instrument).")
     return 0
 
 

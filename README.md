@@ -11,12 +11,17 @@ timeline, sem gravação, sem menus, sem dropdowns na tela principal.
 
 - Detecta **automaticamente** o teclado MIDI USB conectado.
 - Carrega uma **SoundFont** `.sf2`/`.sf3`.
-- Mostra **botões grandes** e troca de instrumento com **um clique**.
+- Dezenas de sons organizados em **bancos** (categorias): TECLAS, CORDAS,
+  SOPROS, MÁGICOS, SYNTH, **BATERIA** e DIVERTIDO. Abas no topo trocam o banco;
+  **um clique** troca o instrumento — sem lotar a tela.
+- **Bateria completa**: cada tecla vira um som de percussão (bumbo, caixa,
+  pratos…), com vários kits (Padrão, Sala, Potente, Eletrônica, 808, Jazz).
 - Áudio de **baixa latência** via **FluidSynth** direto (sem Qsynth).
 - Saída por **PipeWire/PulseAudio**.
 - Controles físicos de **Volume**, **Reverb** e **Oitava**.
 - Botão grande **PARAR SOM** (panic) para resolver notas travadas.
-- **Knobs do teclado** podem trocar o instrumento (via Program Change ou CC).
+- **Knobs do teclado**: A1 troca o **banco**, A2 troca o **instrumento** (via
+  Program Change ou CC).
 - Tela **CONFIG** simples para trocar SoundFont, redetectar MIDI e testar o som.
 - Funciona **mesmo sem teclado** conectado (mostra aviso e permite testar o som).
 - Abre **maximizado** para aproveitar a tela toda.
@@ -98,16 +103,31 @@ cp mini-synth.desktop ~/.local/share/applications/
 ### Instrumentos e aparência — `config/instruments.yaml`
 
 Os botões são montados **dinamicamente** a partir desse arquivo. Os números de
-**banco/programa MIDI vivem somente aqui**, nunca no código:
+**banco/programa MIDI vivem somente aqui**, nunca no código. Instrumentos ficam
+agrupados em **bancos** (categorias); cada banco vira uma aba na tela principal:
 
 ```yaml
-instruments:
-  - id: grand_piano
-    label: "PIANO"          # texto do botão
-    display_name: "Grand Piano"
-    bank: 0
-    program: 0
+banks:
+  - id: teclas
+    label: "TECLAS"           # texto da aba
+    instruments:
+      - id: grand_piano
+        label: "PIANO"        # texto do botão
+        display_name: "Grand Piano"
+        bank: 0
+        program: 0
+  - id: bateria
+    label: "BATERIA"
+    instruments:
+      - id: drums_standard
+        label: "PADRÃO"
+        bank: 128             # GM: bank 128 = kit de percussão
+        program: 0
+        percussion: true      # toca no canal 9, cada tecla é um som de bateria
 ```
+
+> Compatibilidade: uma lista plana `instruments:` (formato antigo) ainda
+> funciona — vira um único banco. `percussion: true` marca kits de bateria.
 
 Também define a `soundfont`, o `driver` de áudio, `gain`, `sample_rate`,
 `buffer_size`, o auto-connect do MIDI e o número de `columns` da grade.
@@ -128,23 +148,27 @@ Configuração na seção `controls` de `config/instruments.yaml`:
 
 ```yaml
 controls:
-  # Program Change (modo comum do knob A1) troca o instrumento:
-  #   valor 1 -> 1º instrumento ... 12 -> 12º; acima de 12 fica no último.
-  program_change_selects_instrument: true
+  # Program Change (modo comum do knob A1) troca o BANCO:
+  #   valor 1 -> 1º banco ... N -> N-ésimo; acima de N fica no último.
+  program_change_selects_bank: true
 
   # Knobs que enviam CC podem ser mapeados individualmente:
   knobs:
     - cc: 1
-      action: instrument   # rola pelos instrumentos
+      action: bank         # A1 rola pelos bancos
+    - cc: 2
+      action: instrument   # A2 rola pelos instrumentos do banco atual
 ```
 
-Ações disponíveis: `instrument`, `volume`, `reverb`, `octave` e `none`.
+Ações disponíveis: `bank`, `instrument`, `volume`, `reverb`, `octave` e `none`.
 CCs não mapeados (ex.: pedal de sustain, CC 64) seguem para o sintetizador.
+O CC do A2 depende do teclado — confirme com `midi-monitor.py` e ajuste.
 
 ### Preferências do usuário — `~/.config/mini-synth/settings.yaml`
 
 Criado automaticamente. Persiste entre execuções: **volume, reverb, oitava,
-último instrumento, última SoundFont, dispositivo MIDI preferido e tela cheia.**
+último instrumento, último banco, última SoundFont, dispositivo MIDI preferido
+e tela cheia.**
 
 ### Logs — `~/.local/state/mini-synth/mini-synth.log`
 
@@ -161,7 +185,8 @@ source .venv/bin/activate
 pytest
 ```
 
-Cobrem: seleção de instrumentos, banco/programa, volume, reverb, transposição de
+Cobrem: seleção de instrumentos, bancos (agrupamento + navegação A1/A2),
+banco/programa, **percussão no canal 9**, volume, reverb, transposição de
 oitava, panic, knobs (CC e Program Change), carregamento de configuração,
 persistência e reconexão MIDI.
 

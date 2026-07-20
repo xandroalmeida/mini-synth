@@ -60,6 +60,73 @@ def test_the_real_project_config_loads() -> None:
     assert config.instrument_by_id("grand_piano") is not None
 
 
+# ---- bancos --------------------------------------------------------------
+BANKS_YAML = """
+soundfont:
+  path: "/tmp/fake.sf2"
+banks:
+  - id: teclas
+    label: "TECLAS"
+    instruments:
+      - id: grand_piano
+        label: "PIANO"
+        program: 0
+      - id: organ
+        label: "ÓRGÃO"
+        program: 19
+  - id: bateria
+    label: "BATERIA"
+    instruments:
+      - id: drums_standard
+        label: "PADRÃO"
+        bank: 128
+        program: 0
+        percussion: true
+"""
+
+
+def test_flat_instruments_wrap_into_default_bank(tmp_path: Path) -> None:
+    # A lista plana 'instruments:' (formato antigo) vira um único banco.
+    config = loader.load_app_config(_write(tmp_path, VALID_YAML))
+    assert len(config.banks) == 1
+    assert config.banks[0].id == "default"
+    assert len(config.instruments) == 2
+
+
+def test_banks_parse_and_flatten(tmp_path: Path) -> None:
+    config = loader.load_app_config(_write(tmp_path, BANKS_YAML))
+    assert [b.id for b in config.banks] == ["teclas", "bateria"]
+    # a propriedade 'instruments' achata na ordem dos bancos
+    assert [i.id for i in config.instruments] == ["grand_piano", "organ", "drums_standard"]
+    assert config.bank_by_id("bateria").label == "BATERIA"
+    assert config.bank_of_instrument(config.instrument_by_id("organ")).id == "teclas"
+
+
+def test_percussion_flag_parsed(tmp_path: Path) -> None:
+    config = loader.load_app_config(_write(tmp_path, BANKS_YAML))
+    assert config.instrument_by_id("drums_standard").percussion is True
+    assert config.instrument_by_id("grand_piano").percussion is False
+
+
+def test_duplicate_bank_ids_raise(tmp_path: Path) -> None:
+    dup = BANKS_YAML.replace("id: bateria", "id: teclas")
+    with pytest.raises(ConfigError):
+        loader.load_app_config(_write(tmp_path, dup))
+
+
+def test_empty_bank_raises(tmp_path: Path) -> None:
+    empty = """
+    soundfont:
+      path: "/tmp/x.sf2"
+    banks:
+      - id: vazio
+        label: "VAZIO"
+        instruments: []
+    """
+    with pytest.raises(ConfigError):
+        loader.load_app_config(_write(tmp_path, empty))
+
+
 def test_missing_instruments_raises(tmp_path: Path) -> None:
     yaml_no_instruments = """
     soundfont:
