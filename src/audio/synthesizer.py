@@ -18,6 +18,7 @@ que o teclado use, a criança sempre ouve o instrumento escolhido.
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Protocol, runtime_checkable
 
 from ..config.models import AudioConfig, Instrument
@@ -95,6 +96,10 @@ class Synthesizer:
         self._reverb = 25
         self._octave = 0
         self._max_gain = max(0.1, audio.gain)
+        # Serializa o acesso ao backend: o MIDI agora chama daqui direto da
+        # thread do rtmidi, enquanto a interface (pywebview) pode chamar de
+        # outra thread. Reentrante porque alguns métodos chamam outros.
+        self._lock = threading.RLock()
 
     # ---- ciclo de vida -------------------------------------------------
     @property
@@ -152,17 +157,20 @@ class Synthesizer:
         :data:`PLAY_CHANNEL`.
         """
         channel = DRUM_CHANNEL if instrument.percussion else PLAY_CHANNEL
-        if self._sfid is None:
-            # Guarda a escolha; será aplicada quando a soundfont carregar.
+        with self._lock:
+            if self._sfid is None:
+                # Guarda a escolha; será aplicada quando a soundfont carregar.
+                self._current = instrument
+                self._play_channel = channel
+                logger.debug(
+                    "Instrumento pendente até soundfont carregar: %s", instrument.id
+                )
+                return
+            self._backend.program_select(
+                channel, self._sfid, instrument.bank, instrument.program
+            )
             self._current = instrument
             self._play_channel = channel
-            logger.debug("Instrumento pendente até soundfont carregar: %s", instrument.id)
-            return
-        self._backend.program_select(
-            channel, self._sfid, instrument.bank, instrument.program
-        )
-        self._current = instrument
-        self._play_channel = channel
         logger.info(
             "Instrumento: %s (canal=%d bank=%d program=%d%s)",
             instrument.display_name,
@@ -234,17 +242,20 @@ class Synthesizer:
         if velocity == 0:
             self.handle_note_off(note)
             return
-        transposed = self.transpose(note)
-        if transposed is not None:
-            self._backend.note_on(self._play_channel, transposed, velocity)
+        with self._lock:
+            transposed = self.transpose(note)
+            if transposed is not None:
+                self._backend.note_on(self._play_channel, transposed, velocity)
 
     def handle_note_off(self, note: int) -> None:
-        transposed = self.transpose(note)
-        if transposed is not None:
-            self._backend.note_off(self._play_channel, transposed)
+        with self._lock:
+            transposed = self.transpose(note)
+            if transposed is not None:
+                self._backend.note_off(self._play_channel, transposed)
 
     def handle_control_change(self, control: int, value: int) -> None:
-        self._backend.control_change(PLAY_CHANNEL, control, value)
+        with self._lock:
+            self._backend.control_change(PLAY_CHANNEL, control, value)
 
     # ---- panic ---------------------------------------------------------
     def panic(self) -> None:
@@ -253,10 +264,11 @@ class Synthesizer:
         Envia All Sound Off (CC120) e All Notes Off (CC123) em todos os 16
         canais e faz um reset do sistema MIDI.
         """
-        for channel in range(16):
-            self._backend.control_change(channel, 120, 0)  # All Sound Off
-            self._backend.control_change(channel, 123, 0)  # All Notes Off
-        self._backend.system_reset()
+        with self._lock:
+            for channel in range(16):
+                self._backend.control_change(channel, 120, 0)  # All Sound Off
+                self._backend.control_change(channel, 123, 0)  # All Notes Off
+            self._backend.system_reset()
         logger.info("PANIC: notas e som interrompidos em todos os canais.")
 
     # ---- som de teste --------------------------------------------------

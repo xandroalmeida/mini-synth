@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Mini Synth</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ===================== PÁGINA PRINCIPAL ===================== -->
+  <section id="page-main" class="page">
+    <div class="header">
+      <span class="screw"></span>
+      <span class="title">MINI SYNTH</span>
+      <span class="spacer"></span>
+      <div class="status"><span class="cap">MIDI</span><span class="led" id="led-midi" title=""></span></div>
+      <div class="status"><span class="cap">ÁUDIO</span><span class="led" id="led-audio" title=""></span></div>
+      <button class="btn metal cfg" id="btn-config">CONFIG</button>
+      <span class="screw"></span>
+    </div>
+
+    <div class="display-card">
+      <div class="display-label">INSTRUMENTO ATUAL</div>
+      <canvas id="vfd" class="vfd"></canvas>
+    </div>
+
+    <div class="bank-tabs" id="bank-tabs"></div>
+
+    <div class="controls-card">
+      <div class="grid-stack" id="grid-stack"></div>
+    </div>
+
+    <div class="control-panel">
+      <div class="control card">
+        <div class="ctl-label">VOLUME</div>
+        <div class="ctl-row">
+          <button class="btn dark pm" data-act="volume" data-dir="-1">−</button>
+          <canvas class="mini-vfd" id="vfd-volume"></canvas>
+          <button class="btn dark pm" data-act="volume" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="control card">
+        <div class="ctl-label">REVERB</div>
+        <div class="ctl-row">
+          <button class="btn dark pm" data-act="reverb" data-dir="-1">−</button>
+          <canvas class="mini-vfd" id="vfd-reverb"></canvas>
+          <button class="btn dark pm" data-act="reverb" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="control card">
+        <div class="ctl-label">OITAVA</div>
+        <div class="ctl-row">
+          <button class="btn dark pm" data-act="octave" data-dir="-1">−</button>
+          <canvas class="mini-vfd" id="vfd-octave"></canvas>
+          <button class="btn dark pm" data-act="octave" data-dir="0">0</button>
+          <button class="btn dark pm" data-act="octave" data-dir="1">+</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn panic" id="btn-panic">PARAR SOM</button>
+  </section>
+
+  <!-- ===================== PÁGINA DE CONFIGURAÇÃO ===================== -->
+  <section id="page-settings" class="page hidden">
+    <div class="settings-header">
+      <span class="settings-title">CONFIGURAÇÃO</span>
+      <span class="spacer"></span>
+      <button class="btn metal" id="btn-back">◄  VOLTAR</button>
+    </div>
+    <div class="card settings-card">
+      <div class="settings-row">
+        <div class="settings-field">SOUNDFONT ATUAL</div>
+        <div class="settings-value" id="set-soundfont">—</div>
+        <button class="btn metal act" id="btn-choose-sf">Escolher outro arquivo</button>
+      </div>
+      <div class="settings-row">
+        <div class="settings-field">DISPOSITIVO MIDI</div>
+        <select class="settings-select" id="set-midi"></select>
+        <button class="btn metal act" id="btn-rescan">Detectar novamente</button>
+      </div>
+      <div class="settings-row">
+        <div class="settings-field">DRIVER DE ÁUDIO</div>
+        <div class="settings-value" id="set-driver">—</div>
+        <button class="btn metal act" id="btn-test">Testar som</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PÁGINA DE ERRO ===================== -->
+  <section id="page-error" class="page hidden">
+    <div class="error-box">
+      <div class="error-title">Ops!</div>
+      <div class="error-message" id="error-message"></div>
+      <button class="btn metal error-retry" id="btn-retry">TENTAR NOVAMENTE</button>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

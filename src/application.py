@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-
-from PySide6.QtCore import QObject, QTimer
+import threading
+import time
 
 from .audio.factory import create_backend
 from .audio.synthesizer import Synthesizer, SynthError
@@ -16,7 +16,7 @@ from .midi.device_manager import (
     STATE_SEARCHING,
     MidiDeviceManager,
 )
-from .ui.main_window import MainWindow
+from .ui.web_bridge import WebUiBridge
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +41,10 @@ def _knob_index(value: int, count: int) -> int:
     return max(0, min(count - 1, value))
 
 
-class Application(QObject):
+class Application:
     """Controlador central. Não contém lógica de síntese nem de UI, só as liga."""
 
     def __init__(self, config: AppConfig, settings: UserSettings) -> None:
-        super().__init__()
         self._config = config
         self._settings = settings
 
@@ -58,30 +57,26 @@ class Application(QObject):
         # Banco atualmente exibido (A1 troca de banco; A2, de instrumento).
         self._current_bank: Bank | None = None
 
-        self.window = MainWindow(config)
+        self.window = WebUiBridge(config)
+        self.window.set_fullscreen(config.interface.fullscreen or settings.fullscreen)
         self._midi = MidiDeviceManager(preferred_device=settings.preferred_midi_device)
 
-        self._test_timer = QTimer(self)
-        self._test_timer.setInterval(TEST_NOTE_MS)
-        self._test_timer.timeout.connect(self._test_tick)
-        self._test_notes: list[int] = []
-        self._test_prev: int | None = None
+        # Som de teste: tocado numa thread daemon (antes usava QTimer).
+        self._test_thread: threading.Thread | None = None
 
         self._wire_ui()
         self._wire_midi()
+
+    @property
+    def ui(self) -> WebUiBridge:
+        """Acesso à ponte de interface (usado pelo main e por testes)."""
+        return self.window
 
     # ------------------------------------------------------------------
     # inicialização
     # ------------------------------------------------------------------
     def start(self) -> None:
-        """Executa a sequência de inicialização descrita na especificação."""
-        if self._config.interface.fullscreen or self._settings.fullscreen:
-            self.window.showFullScreen()
-        else:
-            # App infantil: abre maximizado para usar toda a tela e dar espaço
-            # aos botões (evita a janela abrir no tamanho mínimo e apertar tudo).
-            self.window.showMaximized()
-
+        """Sobe áudio e MIDI. A janela já foi criada/exibida pelo ``main``."""
         self._start_audio()
         self._midi.start()
 
@@ -395,27 +390,31 @@ class Application(QObject):
         self._persist()
 
     # ------------------------------------------------------------------
-    # som de teste (QTimer, quatro notas)
+    # som de teste (thread daemon, quatro notas)
     # ------------------------------------------------------------------
     def _on_test_sound(self) -> None:
-        if self._synth is None or self._test_timer.isActive():
+        if self._synth is None:
             return
-        self._test_notes = list(TEST_SEQUENCE)
-        self._test_prev = None
-        self._test_timer.start()
-        self._test_tick()
+        if self._test_thread is not None and self._test_thread.is_alive():
+            return
+        self._test_thread = threading.Thread(
+            target=self._run_test_sequence, name="test-sound", daemon=True
+        )
+        self._test_thread.start()
 
-    def _test_tick(self) -> None:
-        assert self._synth is not None
-        if self._test_prev is not None:
-            self._synth.handle_note_off(self._test_prev)
-            self._test_prev = None
-        if not self._test_notes:
-            self._test_timer.stop()
+    def _run_test_sequence(self) -> None:
+        synth = self._synth
+        if synth is None:
             return
-        note = self._test_notes.pop(0)
-        self._synth.handle_note_on(note, 100)
-        self._test_prev = note
+        prev: int | None = None
+        for note in TEST_SEQUENCE:
+            if prev is not None:
+                synth.handle_note_off(prev)
+            synth.handle_note_on(note, 100)
+            prev = note
+            time.sleep(TEST_NOTE_MS / 1000)
+        if prev is not None:
+            synth.handle_note_off(prev)
 
     # ------------------------------------------------------------------
     # erro / retry / persistência / shutdown

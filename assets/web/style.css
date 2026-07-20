@@ -1,0 +1,157 @@
+:root{
+  --metal-hi:#e9ecef; --metal:#c9cdd2; --metal-lo:#a7abb1; --metal-edge:#6f747b;
+  --vfd-text:#8dffe0; --vfd-glow:#3fe0b8; --vfd-dim:#2a7a68;
+  --text-dark:#26292e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"DejaVu Sans","Noto Sans",sans-serif;
+  color:var(--text-dark);
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0 1px, rgba(0,0,0,.05) 1px 2px),
+    linear-gradient(180deg,#e9ecef 0%,#d3d7dc 50%,#bcc0c6 100%);
+  -webkit-user-select:none; user-select:none;
+  overflow:hidden;
+}
+.page{display:flex;flex-direction:column;gap:10px;height:100vh;padding:14px}
+.hidden{display:none !important}
+.spacer{flex:1}
+
+/* ---------- header ---------- */
+.header{
+  display:flex;align-items:center;gap:14px;padding:10px 16px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.4) 0 1px, rgba(0,0,0,.06) 1px 2px),
+    linear-gradient(180deg,#c4c8cd,#b0b4ba);
+  border-radius:8px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), inset 0 -2px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.2);
+}
+.title{font-size:26px;font-weight:800;letter-spacing:4px;color:var(--text-dark);
+  text-shadow:0 1px 0 rgba(255,255,255,.7),0 -1px 0 rgba(0,0,0,.25)}
+.status{display:flex;align-items:center;gap:8px}
+.cap{font-size:14px;font-weight:800;letter-spacing:3px;color:var(--text-dark)}
+.btn.cfg{min-width:120px;height:46px;font-size:15px;letter-spacing:2px}
+
+/* parafuso Phillips embutido */
+.screw{
+  width:22px;height:22px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 38% 34%,#eef1f3,#b9bdc2 55%,#787c82);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.28), inset 0 1px 2px rgba(255,255,255,.6), 0 1px 1px rgba(0,0,0,.3);
+  position:relative;
+}
+.screw::before,.screw::after{content:"";position:absolute;inset:0;margin:auto;
+  background:#282b2f;border-radius:1px;box-shadow:0 1px 0 rgba(255,255,255,.25)}
+.screw::before{width:56%;height:2.4px}
+.screw::after{width:2.4px;height:56%}
+
+/* LED */
+.led{
+  width:20px;height:20px;border-radius:50%;flex:none;
+  --led:#5a5f66;--led-bright:#8a8f96;--led-dark:#2a2e33;--led-halo:rgba(0,0,0,.15);
+  background:radial-gradient(circle at 40% 35%, var(--led-bright), var(--led) 60%, var(--led-dark));
+  box-shadow: 0 0 0 3px rgba(0,0,0,.15), 0 0 10px 2px var(--led-halo), inset 0 1px 2px rgba(255,255,255,.7);
+}
+.led.connected{--led:#54e08a;--led-bright:#b6f4cf;--led-dark:#1f5030;--led-halo:rgba(84,224,138,.6)}
+.led.searching{--led:#ffcf3f;--led-bright:#ffe89a;--led-dark:#8a6a00;--led-halo:rgba(255,207,63,.6)}
+.led.error{--led:#ff5a4d;--led-bright:#ffb0a8;--led-dark:#7a1810;--led-halo:rgba(255,90,77,.6)}
+
+/* ---------- VFD ---------- */
+.display-card{
+  background:linear-gradient(180deg,#0c1a17,#03110d 60%,#020c09);
+  border-radius:10px;padding:10px 14px 12px;
+  box-shadow: inset 0 0 0 4px #05100d, inset 0 3px 12px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.4);
+}
+.display-label{color:var(--vfd-dim);font-family:"DejaVu Sans Mono",monospace;
+  font-size:15px;font-weight:700;letter-spacing:4px;margin-bottom:4px}
+.vfd{display:block;width:100%;height:72px}
+.mini-vfd{display:block;width:76px;height:40px;
+  background:linear-gradient(180deg,#0c1a17,#020c09);border-radius:6px;
+  box-shadow:inset 0 0 0 3px #05100d, inset 0 2px 6px rgba(0,0,0,.8)}
+
+/* ---------- bank tabs ---------- */
+.bank-tabs{display:flex;gap:8px;padding:6px 8px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#bdc1c6,#adb1b7);border-radius:8px;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.25)}
+.tab{flex:1;min-width:110px;height:42px;font-size:14px}
+
+/* ---------- grade de instrumentos ---------- */
+.controls-card{flex:1;overflow:hidden;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.25) 0 1px, rgba(0,0,0,.05) 1px 2px),
+    linear-gradient(180deg,#bdc1c6,#adb1b7);
+  border-radius:10px;padding:14px 16px;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.3)}
+.grid-stack{height:100%}
+.grid{display:none;grid-auto-rows:1fr;gap:12px 14px;height:100%}
+.grid.active{display:grid}
+.grid .btn{min-height:56px;display:flex;align-items:center;justify-content:center;gap:8px}
+.grid .btn .ico{font-size:1.4em;line-height:1}
+
+/* ---------- painel de controles ---------- */
+.control-panel{display:flex;gap:10px}
+.card{
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.25) 0 1px, rgba(0,0,0,.05) 1px 2px),
+    linear-gradient(180deg,#bdc1c6,#adb1b7);
+  border-radius:8px;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.35), inset 0 -2px 4px rgba(0,0,0,.2)}
+.control{flex:1;padding:8px 10px 10px}
+.ctl-label{text-align:center;font-size:14px;font-weight:800;letter-spacing:3px;
+  color:var(--text-dark);margin-bottom:6px}
+.ctl-row{display:flex;gap:3px;align-items:stretch}
+.ctl-row .pm{flex:1;font-size:24px;padding:6px}
+.ctl-row .mini-vfd{flex:2;height:auto;min-height:40px;width:auto}
+.btn.panic{height:60px;width:100%;font-size:22px;letter-spacing:3px}
+
+/* ---------- botões físicos ---------- */
+.btn{
+  border:none;cursor:pointer;color:#eef2f6;border-radius:14px;
+  font-family:"DejaVu Sans",sans-serif;font-weight:800;letter-spacing:1px;font-size:17px;
+  padding:10px 16px;position:relative;transition:transform .04s, box-shadow .04s;
+  --top:#828892;--mid:#4b515a;--bot:#262a31;--bhi:#969ca6;--blo:#0e1013;--txt:#eef2f6;
+  --tshadow:rgba(0,0,0,.7);--tsdy:1px;
+  background:linear-gradient(180deg,var(--top) 0%,var(--mid) 50%,var(--bot) 100%);
+  color:var(--txt); text-shadow:0 var(--tsdy) 0 var(--tshadow);
+  box-shadow:
+    0 4px 6px rgba(0,0,0,.4), 0 6px 10px rgba(0,0,0,.25),
+    inset 0 1px 0 var(--bhi), inset 0 0 0 1.4px rgba(0,0,0,.35),
+    inset 0 14px 18px rgba(255,255,255,.18);
+}
+.btn:active{transform:translateY(3px);
+  box-shadow:0 1px 2px rgba(0,0,0,.4), inset 0 2px 5px rgba(0,0,0,.5), inset 0 0 0 1.4px rgba(0,0,0,.4)}
+.btn.metal{--top:#f4f6f8;--mid:#d4d8dc;--bot:#a9afb5;--bhi:#ffffff;--blo:#82888f;
+  --txt:#24272c;--tshadow:rgba(255,255,255,.7);--tsdy:-1px}
+.btn.panic{--top:#ff9a82;--mid:#ec4636;--bot:#a01a0e;--bhi:#ffc0b2;--blo:#5c0d04;
+  --txt:#2c0500;--tshadow:rgba(255,210,200,.5);--tsdy:-1px;font-weight:900;
+  box-shadow:0 4px 6px rgba(0,0,0,.4),0 0 14px 2px rgba(255,82,54,.5),
+    inset 0 1px 0 var(--bhi),inset 0 0 0 1.4px rgba(0,0,0,.3),inset 0 14px 18px rgba(255,255,255,.15)}
+.btn.selected{--top:#ffe08a;--mid:#ffb62c;--bot:#d5860a;--bhi:#fff0c0;--blo:#7a4d00;
+  --txt:#2a1600;--tshadow:rgba(255,240,200,.6);--tsdy:-1px;
+  box-shadow:0 4px 6px rgba(0,0,0,.4),0 0 16px 3px rgba(255,190,58,.65),
+    inset 0 1px 0 var(--bhi),inset 0 0 0 1.4px rgba(0,0,0,.25),inset 0 14px 18px rgba(255,255,255,.25)}
+
+/* ---------- página de configuração ---------- */
+.settings-header{display:flex;align-items:center;gap:14px;padding:6px 4px}
+.settings-title{font-size:26px;font-weight:800;letter-spacing:3px;color:var(--text-dark)}
+.settings-card{padding:28px 28px;display:flex;flex-direction:column;gap:18px}
+.settings-row{display:grid;grid-template-columns:220px 1fr 260px;gap:24px;align-items:center}
+.settings-field{font-size:14px;font-weight:800;letter-spacing:2px;color:var(--text-dark)}
+.settings-value{
+  background:linear-gradient(180deg,#0c1a17,#020c09);color:var(--vfd-text);
+  font-family:"DejaVu Sans Mono",monospace;font-size:16px;font-weight:700;
+  padding:10px 12px;border-radius:6px;word-break:break-all;
+  box-shadow:inset 0 0 0 3px #05100d, inset 0 2px 6px rgba(0,0,0,.8)}
+.settings-select{
+  font-family:"DejaVu Sans",sans-serif;font-size:16px;font-weight:700;color:#eef2f6;
+  padding:10px 12px;border:none;border-radius:8px;
+  background:linear-gradient(180deg,#4b515a,#262a31);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 2px 4px rgba(0,0,0,.3)}
+.btn.act{font-size:16px;padding:12px 14px}
+
+/* ---------- página de erro ---------- */
+#page-error{align-items:center;justify-content:center}
+.error-box{display:flex;flex-direction:column;align-items:center;gap:24px;max-width:640px;text-align:center}
+.error-title{color:#b52a1c;font-size:34px;font-weight:900;letter-spacing:2px}
+.error-message{color:var(--text-dark);font-size:20px;font-weight:600;line-height:1.4}
+.error-retry{font-size:20px;padding:18px 40px}

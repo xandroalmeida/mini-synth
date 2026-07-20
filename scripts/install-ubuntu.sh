@@ -22,6 +22,9 @@ APT_PACKAGES=(
     python3                 # interpretador
     python3-venv            # ambientes virtuais
     python3-pip             # instalador de pacotes Python
+    python3-gi              # PyGObject (backend GTK do pywebview)
+    gir1.2-gtk-3.0          # bindings GTK 3
+    gir1.2-webkit2-4.1      # WebKitGTK (renderiza a interface)
     pipewire-pulse          # saída de áudio (compatibilidade PulseAudio)
 )
 
@@ -49,9 +52,16 @@ check_tools() {
 }
 
 setup_venv() {
-    info "Criando ambiente virtual Python em .venv..."
+    info "Criando ambiente virtual Python em .venv (--system-site-packages)..."
+    # O venv precisa enxergar o PyGObject (gi)/WebKitGTK do apt para o backend
+    # GTK do pywebview funcionar. Se um .venv antigo (sem esse acesso) existir,
+    # recria.
+    if [ -d ".venv" ] && ! .venv/bin/python -c "import gi" >/dev/null 2>&1; then
+        warn ".venv sem acesso ao 'gi' do sistema; recriando com --system-site-packages..."
+        rm -rf .venv
+    fi
     if [ ! -d ".venv" ]; then
-        python3 -m venv .venv
+        python3 -m venv --system-site-packages .venv
     fi
     # shellcheck disable=SC1091
     source .venv/bin/activate

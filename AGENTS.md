@@ -15,6 +15,11 @@ dropdowns na tela principal. Simplicidade é requisito, não preguiça.
 
 - **Python 3.12**, use SEMPRE o venv do projeto: `source .venv/bin/activate`.
   O Python do sistema não tem `pip` nem as dependências.
+- **A interface é pywebview (backend GTK/WebKit), NÃO Qt.** O venv PRECISA ser
+  criado com `python3 -m venv --system-site-packages` para enxergar o `gi`
+  (PyGObject) e o WebKitGTK do apt; senão a janela não abre. Se um `.venv` antigo
+  (Qt/sem system-site-packages) existir, rode `./scripts/install-ubuntu.sh` (ele
+  detecta e recria) ou recrie à mão. pip instala só coisas leves (pywebview etc.).
 - **`fluidsynth` (binário CLI) NÃO está instalado**; só a `libfluidsynth3`.
   Logo, o backend padrão é o `fluidsynth_backend` (pyfluidsynth). O
   `subprocess_backend` só funciona se `apt install fluidsynth`.
@@ -31,30 +36,35 @@ dropdowns na tela principal. Simplicidade é requisito, não preguiça.
 
 ```bash
 source .venv/bin/activate
-python -m src.main            # ou ./run.sh   (abre MAXIMIZADO)
-MINI_SYNTH_DEBUG=1 python -m src.main   # loga cada evento MIDI no terminal
-pytest                        # 58 testes, sem hardware/áudio real
+python -m src.main            # ou ./run.sh   (janela 1100×720, ou fullscreen se configurado)
+MINI_SYNTH_DEBUG=1 python -m src.main   # loga cada evento MIDI + erros de evaluate_js
+pytest                        # 73 testes, sem hardware/áudio/gráfico real
 python scripts/midi-monitor.py   # descobre o que cada knob/tecla envia
 ```
 
-- Testes rodam com `QT_QPA_PLATFORM=offscreen` (setado no `conftest.py`) e usam
-  `MockBackend` + um `rtmidi` falso. Nada de áudio/MIDI real é necessário.
+- Testes usam `MockBackend` + um `rtmidi` falso; a UI é o `WebUiBridge` sem
+  janela (guarda estado em Python). Nada de áudio/MIDI/gráfico real é necessário.
+  A fixture `qapp` do `conftest.py` virou um no-op (sem Qt) só para não mexer nas
+  assinaturas dos testes.
 - `pyproject.toml` já define `pythonpath = ["."]`, então `pytest` acha `src/`.
 
 ## ⚠️ Armadilhas já pagas (não repita)
 
-1. **Verificar a UI: use captura da JANELA REAL, no tamanho real.**
-   `widget.grab()` offscreen num tamanho arbitrário **engana** — a janela real
-   abre no tamanho que o WM dá. Sem `showMaximized`, ela abre no **mínimo
-   (900×540)** e aperta tudo. Para conferir de verdade, rode com a plataforma
-   real (sem offscreen), deixe a janela abrir/maximizar e só então
-   `ctrl.window.grab().save(...)`. Depois **abra o PNG e olhe criticamente.**
+1. **Verificar a UI web: sirva os assets e abra no navegador.** A janela real é
+   pywebview/WebKitGTK; o screenshot de janela via D-Bus do GNOME é **bloqueado**
+   no Ubuntu 24.04. Para conferir o visual, rode `python -m http.server` em
+   `assets/web/` e abra no Chrome (ou capture com WebKit `get_snapshot`, que
+   exige o apt `python3-gi-cairo`). Para checar a integração real, rode
+   `python -m src.main` com `MINI_SYNTH_DEBUG=1` e veja o log: **zero**
+   `evaluate_js falhou` / `Can't find variable: MS` = a ponte está OK.
+   ⚠️ pywebview: carregue via **`file://`** (`(WEB_DIR/'index.html').as_uri()`);
+   o http server embutido dele dá **404 nos assets** (`app.js`/`style.css`).
 2. **`pkill -f "src.main"` mata o próprio comando** (o wrapper do shell contém
    a string). Use o truque de regex: `pkill -f "[p]ython -m src.main"`.
-3. **Botões físicos são pintados à mão** (`src/ui/buttons.py`, `PanelButton`),
-   NÃO com `border: outset` do QSS (fica chapado e "encavala"). Cada botão
-   reserva margem interna para a sombra projetada; ajuste espaçamentos de
-   layout junto com essa margem para não colar as fileiras.
+3. **Botões/visor/LEDs são CSS + canvas** (`assets/web/style.css`, `app.js`),
+   não mais QPainter. O VFD é a fonte 5×7 `_FONT` portada do antigo `vfd.py`
+   para um `<canvas>` (`drawVfd`), com glow/scanlines/reflexo. Skeuomorfismo em
+   CSS (gradiente + box-shadow + `:active`), **sem imagens externas**.
 4. **O teclado troca o protocolo dos knobs conforme o modo/banco.** Os knobs já
    apareceram como CCs diferentes E como **Program Change** dependendo do modo.
    Por isso o app trata Program Change E CC. Não presuma um número fixo; confirme
@@ -80,29 +90,33 @@ python scripts/midi-monitor.py   # descobre o que cada knob/tecla envia
 
 ```
 src/
-  main.py            # logging, QApplication, stylesheet, trata ConfigError fatal
+  main.py            # logging, webview.create_window/start (pywebview GTK), ConfigError fatal
   application.py     # Application: liga config↔synth↔MIDI↔UI. Sem lógica de síntese/UI.
   audio/
-    synthesizer.py       # Synthesizer (lógica musical) + Protocol SynthesizerBackend
+    synthesizer.py       # Synthesizer (lógica musical, threading.RLock) + Protocol Backend
     factory.py           # create_backend("auto"|"fluidsynth"|"subprocess"|"mock")
     fluidsynth_backend.py subprocess_backend.py mock_backend.py
   midi/
     alsa.py              # funções PURAS de filtro de porta + wrapper rtmidi (testável)
-    device_manager.py    # MidiDeviceManager(QObject): QTimer 2s, sinais Qt, reconexão
+    device_manager.py    # MidiDeviceManager: thread daemon 2s, Signal (util.signal), reconexão
   ui/
-    main_window.py       # QStackedWidget: principal / CONFIG / erro. Fullscreen, Esc.
-    buttons.py           # PanelButton (skeuomorfismo real, QPainter)
-    vfd.py               # VfdDisplay (dot-matrix 5x7 pintado, glow, scanlines)
-    instrument_button.py control_panel.py status_indicator.py decorations.py styles.py
+    web_bridge.py        # WebUiBridge: ponte p/ a UI web. Imita a API do antigo MainWindow.
+                         #   Api (js_api p/ JS→Python) + evaluate_js('MS.…') p/ Python→JS.
+  util/
+    signal.py            # Signal síncrono (.connect/.emit) — substitui os Signal do Qt
   config/
     models.py            # dataclasses validadas (AppConfig, Instrument, ControlsConfig, UserSettings)
     loader.py            # YAML + persistência + busca de SoundFont
+assets/web/            # A INTERFACE (HTML/CSS/JS). Sem Qt.
+  index.html           # 3 páginas: #page-main / #page-settings / #page-error
+  style.css            # skeuomorfismo 90s: botões, faceplate, LEDs, parafusos (CSS puro)
+  app.js               # namespace MS.* (chamado pelo Python); VFD dot-matrix 5x7 em <canvas>
 ```
 
 ### Fluxo MIDI (importante)
 
 O app **intercepta** o MIDI (rtmidi), não deixa o teclado tocar direto no
-FluidSynth. `device_manager` emite sinais Qt (`note_on/off`, `control_change`,
+FluidSynth. `device_manager` emite `Signal` (`note_on/off`, `control_change`,
 `program_change`); `application` aplica **transposição de oitava** (exceto na
 bateria) e roteia as notas para o **canal do instrumento atual** — canal 0 para
 melódicos, canal 9 para percussão. Assim, qualquer canal do teclado toca o
@@ -111,12 +125,16 @@ UI (ver armadilhas 6 e 7).
 
 Instrumentos vivem em **bancos** (`banks:` no `instruments.yaml`): cada banco é
 uma categoria (TECLAS, SOPROS, BATERIA…). Na UI, uma fileira de abas no topo
-troca o banco (`MainWindow`: um `QStackedWidget` com uma grade por banco);
+troca o banco (o JS mostra uma `.grid` por banco; só a ativa aparece);
 `AppConfig.instruments` continua achatando tudo numa lista. O formato antigo
 (lista plana `instruments:`) ainda carrega — vira um banco "default".
 
-Sinais Qt emitidos da thread do rtmidi chegam à thread da UI por conexão
-enfileirada (funciona; já testado cross-thread).
+**Threading**: o callback do rtmidi roda em thread própria e agora chama o
+`Synthesizer` DIRETO (sem marshaling Qt) — por isso o `Synthesizer` tem um
+`threading.RLock`. As atualizações de UI vão por `window.evaluate_js('MS.…')`,
+que o pywebview entrega em segurança (validado com evaluate_js de thread de
+fundo). O `WebUiBridge` guarda o estado em Python, então tudo continua testável
+sem janela.
 
 ## Convenções / o que NÃO quebrar
 
@@ -124,7 +142,7 @@ enfileirada (funciona; já testado cross-thread).
 - Tela principal: **sem menus, sem dropdowns**. Dropdown só na tela CONFIG.
 - Erros na UI são **mensagens simples** + botão TENTAR NOVAMENTE; nunca
   stack trace. Detalhes vão para o log.
-- Aparência: só QSS + QPainter, **sem imagens externas**.
+- Aparência: HTML/CSS + `<canvas>` (`assets/web/`), **sem imagens externas**.
 - Persistência: `~/.config/mini-synth/settings.yaml`.
   Logs: `~/.local/state/mini-synth/mini-synth.log`.
 - Ao mudar comportamento, atualize/estenda os testes (`tests/test_*.py`) e

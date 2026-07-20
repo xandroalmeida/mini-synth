@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
-# Permite instanciar QObjects (device manager) sem servidor gráfico.
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 import pytest
 
 from src.audio.mock_backend import MockBackend
@@ -46,11 +41,10 @@ def organ() -> Instrument:
 
 @pytest.fixture(scope="session")
 def qapp():
-    """QApplication (offscreen) para testes com QObject/Signal/QTimer/QWidget."""
-    from PySide6.QtWidgets import QApplication
-
-    app = QApplication.instance() or QApplication([])
-    yield app
+    """Compatibilidade: sem Qt, a interface é web (pywebview). Os testes que
+    recebem ``qapp`` não precisam mais de um QApplication — a fixture existe só
+    para não alterar suas assinaturas."""
+    yield None
 
 
 class FakeMidiIn:

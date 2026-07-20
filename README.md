@@ -28,8 +28,8 @@ timeline, sem gravação, sem menus, sem dropdowns na tela principal.
 
 ## 🧱 Tecnologias
 
-Python 3.12 · PySide6 · FluidSynth (libfluidsynth) · ALSA Sequencer (rtmidi) ·
-PipeWire/PulseAudio · YAML · pytest.
+Python 3.12 · pywebview (GTK/WebKit) · FluidSynth (libfluidsynth) · ALSA
+Sequencer (rtmidi) · PipeWire/PulseAudio · YAML · pytest.
 
 O acesso ao FluidSynth é feito por uma **camada desacoplada** com três backends
 intercambiáveis:
@@ -38,9 +38,11 @@ intercambiáveis:
 2. `subprocess_backend` — processo externo `fluidsynth` (fallback);
 3. `mock_backend` — para os testes automatizados.
 
-Toda a aparência é feita com Qt Style Sheets + pintura à mão (QPainter) — **sem
-imagens externas**. Os botões, o visor dot-matrix e os LEDs são desenhados por
-código.
+A interface é uma página web (`assets/web/`) renderizada pelo **pywebview** no
+WebKitGTK do sistema — **sem Qt**. Toda a aparência é HTML/CSS + `<canvas>`,
+**sem imagens externas**: os botões, o faceplate de metal e os LEDs são CSS
+(gradiente + box-shadow) e o visor dot-matrix é desenhado ponto a ponto num
+canvas.
 
 ## 📦 Instalação via pacote .deb (recomendado para usuários)
 
@@ -48,14 +50,16 @@ Baixe o `mini-synth_<versão>_all.deb` e instale (**precisa de internet** na
 instalação):
 
 ```bash
-sudo apt install ./mini-synth_1.1.0_all.deb
+sudo apt install ./mini-synth_2.0.0_all.deb
 ```
 
-Por que internet? O **PySide6 não está no apt do Ubuntu 24.04** (só o PySide2,
-que é Qt5). Então o pacote leva apenas o código e, na instalação, cria um
-ambiente Python isolado em `/opt/mini-synth/venv` e baixa via **pip** o PySide6,
-`python-rtmidi`, `PyYAML` e `pyfluidsynth`. As demais dependências vêm do apt
-(`python3-venv`, `python3-pip`, `libfluidsynth3`, `fluid-soundfont-gm`).
+Por que internet? O pacote leva apenas o código e, na instalação, cria um
+ambiente Python isolado em `/opt/mini-synth/venv` (com `--system-site-packages`)
+e baixa via **pip** apenas bibliotecas leves: `pywebview`, `python-rtmidi`,
+`PyYAML` e `pyfluidsynth`. O resto vem do apt (`python3-gi`, `gir1.2-webkit2-4.1`
+e `gir1.2-gtk-3.0` para a interface; `libfluidsynth3` e `fluid-soundfont-gm`
+para o som). Nada de PySide6 — o download da instalação caiu de ~650 MB para
+poucos MB.
 
 Depois é só abrir **Mini Synth** pelo menu de aplicativos. Para remover (também
 apaga o venv): `sudo apt remove mini-synth`. O pacote é `Architecture: all`.
@@ -243,11 +247,12 @@ src/
   main.py            application.py
   audio/   synthesizer.py  fluidsynth_backend.py  subprocess_backend.py  mock_backend.py  factory.py
   midi/    device_manager.py  alsa.py
-  ui/      main_window.py  buttons.py  instrument_button.py  control_panel.py
-           vfd.py  status_indicator.py  decorations.py  settings_window.py  styles.py
+  ui/      web_bridge.py      # ponte Python↔interface web (pywebview)
+  util/    signal.py          # Signal síncrono (substitui os Signal do Qt)
   config/  loader.py  models.py
+assets/web/  index.html  style.css  app.js   # a interface (HTML/CSS/canvas)
 config/  instruments.yaml
-scripts/ install-ubuntu.sh  make-icon.py  midi-monitor.py
+scripts/ install-ubuntu.sh  build-deb.sh  make-icon.py  midi-monitor.py
 tests/   test_*.py
 ```
 

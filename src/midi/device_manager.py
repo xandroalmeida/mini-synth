@@ -1,27 +1,31 @@
 """Detecção, conexão e monitoramento de dispositivos MIDI.
 
-Responsabilidades (todas fora da thread da interface, exceto os sinais Qt, que
-são entregues de forma segura à thread da UI):
+Responsabilidades (todas fora da thread da interface):
 
 * listar portas ALSA MIDI (via rtmidi);
 * identificar portas físicas e ignorar as virtuais / do próprio FluidSynth;
 * detectar conexão e desconexão;
-* reconectar automaticamente (varredura a cada 2 s);
-* expor o estado para a interface por meio de sinais Qt.
+* reconectar automaticamente (varredura a cada 2 s, numa thread daemon);
+* expor o estado por meio de :class:`~src.util.signal.Signal` (síncrono).
+
+O callback do rtmidi roda em thread própria e emite os sinais diretamente; os
+inscritos (Application -> Synthesizer) tratam o evento nessa thread. O
+``Synthesizer`` serializa o acesso com um lock, e as atualizações de interface
+usam ``window.evaluate_js`` (thread-safe no pywebview).
 """
 
 from __future__ import annotations
 
 import logging
-
-from PySide6.QtCore import QObject, QTimer, Signal
+import threading
 
 from . import alsa
 from .alsa import MidiPort
+from ..util.signal import Signal
 
 logger = logging.getLogger(__name__)
 
-POLL_INTERVAL_MS = 2000
+POLL_INTERVAL_S = 2.0
 
 # Estados expostos para os indicadores da interface.
 STATE_SEARCHING = "searching"  # amarelo
@@ -29,29 +33,28 @@ STATE_CONNECTED = "connected"  # verde
 STATE_ERROR = "error"          # vermelho
 
 
-class MidiDeviceManager(QObject):
+class MidiDeviceManager:
     """Gerencia a porta MIDI física e encaminha eventos para o app."""
 
-    #: (estado, mensagem legível) — para o indicador de status.
-    status_changed = Signal(str, str)
-    #: nota, velocidade
-    note_on = Signal(int, int)
-    #: nota
-    note_off = Signal(int)
-    #: controle, valor
-    control_change = Signal(int, int)
-    #: número do programa (Program Change)
-    program_change = Signal(int)
+    def __init__(self, preferred_device: str = "") -> None:
+        #: (estado, mensagem legível) — para o indicador de status.
+        self.status_changed = Signal()
+        #: nota, velocidade
+        self.note_on = Signal()
+        #: nota
+        self.note_off = Signal()
+        #: controle, valor
+        self.control_change = Signal()
+        #: número do programa (Program Change)
+        self.program_change = Signal()
 
-    def __init__(self, preferred_device: str = "", parent: QObject | None = None) -> None:
-        super().__init__(parent)
         self._preferred = preferred_device
         self._midi_in = alsa.create_midi_in()
         self._open_port: MidiPort | None = None
         self._state = STATE_SEARCHING
-        self._timer = QTimer(self)
-        self._timer.setInterval(POLL_INTERVAL_MS)
-        self._timer.timeout.connect(self._poll)
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
 
     # ---- API pública ---------------------------------------------------
     @property
@@ -71,10 +74,25 @@ class MidiDeviceManager(QObject):
             self._set_state(STATE_ERROR, "MIDI indisponível neste sistema")
             return
         self._poll()
-        self._timer.start()
+        self._stop.clear()
+        self._thread = threading.Thread(
+            target=self._run, name="midi-poll", daemon=True
+        )
+        self._thread.start()
+
+    def _run(self) -> None:
+        """Laço de varredura periódica (thread daemon)."""
+        while not self._stop.wait(POLL_INTERVAL_S):
+            try:
+                self._poll()
+            except Exception:  # pragma: no cover - defensivo
+                logger.debug("Erro na varredura de MIDI", exc_info=True)
 
     def stop(self) -> None:
-        self._timer.stop()
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=POLL_INTERVAL_S + 0.5)
+            self._thread = None
         self._close_port()
         if self._midi_in is not None:
             try:
@@ -95,25 +113,28 @@ class MidiDeviceManager(QObject):
 
     # ---- lógica interna ------------------------------------------------
     def _poll(self) -> None:
-        if self._midi_in is None:
-            return
-        ports = self.list_ports()
+        with self._lock:
+            if self._midi_in is None:
+                return
+            ports = self.list_ports()
 
-        # A porta aberta ainda existe?
-        if self._open_port is not None:
-            still_present = any(p.name == self._open_port.name for p in ports)
-            if not still_present:
-                logger.info("Dispositivo MIDI desconectado: %s", self._open_port.name)
-                self._close_port()
-                self._set_state(STATE_SEARCHING, "Procurando teclado MIDI...")
-            else:
-                return  # tudo certo, nada a fazer
+            # A porta aberta ainda existe?
+            if self._open_port is not None:
+                still_present = any(p.name == self._open_port.name for p in ports)
+                if not still_present:
+                    logger.info(
+                        "Dispositivo MIDI desconectado: %s", self._open_port.name
+                    )
+                    self._close_port()
+                    self._set_state(STATE_SEARCHING, "Procurando teclado MIDI...")
+                else:
+                    return  # tudo certo, nada a fazer
 
-        target = alsa.choose_port(ports, self._preferred)
-        if target is None:
-            self._set_state(STATE_SEARCHING, "Teclado MIDI não encontrado")
-            return
-        self._open(target)
+            target = alsa.choose_port(ports, self._preferred)
+            if target is None:
+                self._set_state(STATE_SEARCHING, "Teclado MIDI não encontrado")
+                return
+            self._open(target)
 
     def _open(self, port: MidiPort) -> None:
         assert self._midi_in is not None

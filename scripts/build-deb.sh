@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Gera o pacote .deb do Mini Synth (Ubuntu / Linux Mint e derivados).
 #
-# Estratégia (o PySide6 NÃO existe no apt do Ubuntu 24.04): o .deb leva apenas
-# o código e, na instalação, um postinst cria um venv em /opt/mini-synth/venv e
-# instala as dependências Python via pip (PySide6, python-rtmidi, PyYAML,
-# pyfluidsynth). Assim o pacote fica pequeno e "Architecture: all", e o pip
-# sempre traz os binários certos para o Python/arquitetura do alvo.
-# Requisito: INTERNET no momento da instalação.
+# Estratégia: a interface usa pywebview no backend GTK/WebKit. O WebKitGTK e o
+# PyGObject (gi) vêm de pacotes APT do sistema (Depends), então o venv é criado
+# com --system-site-packages e o pip instala apenas dependências leves
+# (pywebview, python-rtmidi, PyYAML, pyfluidsynth) — nada de PySide6 (~650 MB).
+# O pacote fica pequeno, "Architecture: all", e o download da instalação cai de
+# centenas de MB para poucos MB.
+# Requisito: INTERNET no momento da instalação (pip).
 #
 # Uso:   ./scripts/build-deb.sh
 # Saída: dist/mini-synth_<versão>_all.deb
@@ -15,13 +16,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
-VERSION="1.1.0"
+VERSION="2.0.0"
 PKG="mini-synth"
 ARCH="all"
 MAINTAINER="Alexandro Almeida <xandroalmeida@gmail.com>"
 
-# Dependências Python instaladas via pip no postinst.
-PYDEPS="PySide6>=6.6 python-rtmidi>=1.5 PyYAML>=6.0 pyfluidsynth>=1.3.3"
+# Dependências Python instaladas via pip no postinst (leves; o WebKitGTK/gi vêm
+# do apt via Depends, ver DEBIAN/control).
+PYDEPS="pywebview>=5.0 python-rtmidi>=1.5 PyYAML>=6.0 pyfluidsynth>=1.3.3"
 
 BUILD="${ROOT}/build/deb"
 STAGE="${BUILD}/${PKG}"
@@ -74,8 +76,10 @@ PYDEPS="${PYDEPS}"
 case "\$1" in
   configure)
     echo "Mini Synth: preparando ambiente Python em \${VENV} (requer internet)..."
+    # --system-site-packages: o venv precisa enxergar o PyGObject (gi) e o
+    # WebKitGTK instalados via apt; sem isso o backend GTK do pywebview não sobe.
     if [ ! -x "\${VENV}/bin/python" ]; then
-        python3 -m venv "\${VENV}"
+        python3 -m venv --system-site-packages "\${VENV}"
     fi
     "\${VENV}/bin/python" -m pip install --upgrade pip
     # shellcheck disable=SC2086
@@ -127,11 +131,12 @@ Files: *
 Copyright: 2026 Alexandro Almeida
 License: MIT
 
-Comment: As dependências Python (PySide6, python-rtmidi, PyYAML, pyfluidsynth)
- são instaladas via pip no momento da instalação, num venv em ${VENVDIR}.
- A SoundFont vem do pacote apt 'fluid-soundfont-gm' (Depends).
+Comment: As dependências Python (pywebview, python-rtmidi, PyYAML, pyfluidsynth)
+ são instaladas via pip no momento da instalação, num venv com
+ --system-site-packages em ${VENVDIR}. O WebKitGTK/PyGObject vêm do apt
+ (Depends). A SoundFont vem do pacote apt 'fluid-soundfont-gm' (Depends).
 EOF
-printf '%s (%s) unstable; urgency=low\n\n  * Bancos, bateria, navegação por knobs e memória por banco.\n\n -- %s  Thu, 01 Jan 1970 00:00:00 +0000\n' \
+printf '%s (%s) unstable; urgency=low\n\n  * Migração da interface de PySide6 para pywebview (GTK/WebKit): pacote leve.\n\n -- %s  Thu, 01 Jan 1970 00:00:00 +0000\n' \
     "${PKG}" "${VERSION}" "${MAINTAINER}" | gzip -9 -n > "${STAGE}/usr/share/doc/${PKG}/changelog.Debian.gz"
 
 ISIZE="$(du -s -k "${STAGE}/usr" | awk '{print $1}')"
@@ -145,7 +150,7 @@ Priority: optional
 Architecture: ${ARCH}
 Maintainer: ${MAINTAINER}
 Installed-Size: ${ISIZE}
-Depends: python3 (>= 3.10), python3-venv, python3-pip, libfluidsynth3 | libfluidsynth2, fluid-soundfont-gm
+Depends: python3 (>= 3.10), python3-venv, python3-pip, python3-gi, gir1.2-gtk-3.0, gir1.2-webkit2-4.1, libfluidsynth3 | libfluidsynth2, fluid-soundfont-gm
 Recommends: fluidsynth
 Description: Instrumento MIDI simples para crianças (Mini Synth)
  Transforma um teclado controlador MIDI num instrumento musical simples,
@@ -155,8 +160,9 @@ Description: Instrumento MIDI simples para crianças (Mini Synth)
  Sons organizados em bancos (TECLAS, CORDAS, SOPROS, BATERIA...), navegação
  pelos knobs do teclado (A1 = banco, A3 = instrumento) e memória por banco.
  .
- As bibliotecas Python (PySide6 etc.) são instaladas via pip na instalação,
- portanto é necessária conexão com a internet ao instalar o pacote.
+ A interface usa pywebview sobre o WebKitGTK do sistema (gir1.2-webkit2-4.1).
+ Bibliotecas Python leves (pywebview, python-rtmidi, PyYAML, pyfluidsynth) são
+ instaladas via pip na instalação; é necessária conexão com a internet.
 EOF
 
 find "${STAGE}" -type d -exec chmod 0755 {} +

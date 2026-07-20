@@ -1,12 +1,12 @@
 [project]
 name = "mini-synth"
-version = "1.1.0"
+version = "2.0.0"
 description = "Transforma um teclado controlador MIDI em um instrumento simples e amigável para crianças."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = [
-    "PySide6>=6.6",
+    "pywebview>=5.0",
     "pyfluidsynth>=1.3.3",
     "python-rtmidi>=1.5",
     "PyYAML>=6.0",
@@ -23,7 +23,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["src", "src.audio", "src.midi", "src.ui", "src.config"]
+packages = ["src", "src.audio", "src.midi", "src.ui", "src.config", "src.util"]
 
 [tool.pytest.ini_options]
 # Permite rodar `pytest` sem definir PYTHONPATH.
