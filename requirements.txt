@@ -11,3 +11,4 @@ PyYAML>=6.0
 
 # Desenvolvimento / testes:
 pytest>=8.0
+Pillow>=10.0   # só para regenerar o ícone (scripts/make-icon.py)

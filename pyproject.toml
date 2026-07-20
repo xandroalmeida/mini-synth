@@ -13,7 +13,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
+# pytest para os testes; Pillow só para regenerar o ícone (scripts/make-icon.py).
+dev = ["pytest>=8.0", "Pillow>=10.0"]
 
 [project.scripts]
 mini-synth = "src.main:main"
