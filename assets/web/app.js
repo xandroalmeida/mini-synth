@@ -146,12 +146,9 @@ const MS = {
         const b = document.createElement("button");
         b.className = "btn dark inst";
         b.dataset.inst = inst.id;
-        if(inst.icon){
-          const ico = document.createElement("span");
-          ico.className = "ico"; ico.textContent = inst.icon;
-          b.appendChild(ico);
-        }
-        b.appendChild(document.createTextNode(inst.label));
+        // 'icon' no YAML é um NOME de ícone (ex.: "piano"), não um glifo —
+        // não é texto para exibir. O botão mostra só o label (como o UI antigo).
+        b.textContent = inst.label;
         b.onclick = () => call("select_instrument", inst.id);
         grid.appendChild(b);
       });
@@ -238,7 +235,6 @@ window.MS = MS;
    ====================================================================== */
 function wireStatic(){
   document.getElementById("btn-config").onclick = () => call("open_config");
-  document.getElementById("btn-panic").onclick  = () => call("panic");
   document.getElementById("btn-back").onclick    = () => call("back");
   document.getElementById("btn-retry").onclick   = () => call("retry");
   document.getElementById("btn-choose-sf").onclick = () => call("choose_soundfont");
