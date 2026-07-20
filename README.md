@@ -42,7 +42,29 @@ Toda a aparência é feita com Qt Style Sheets + pintura à mão (QPainter) — 
 imagens externas**. Os botões, o visor dot-matrix e os LEDs são desenhados por
 código.
 
-## 🚀 Instalação (Ubuntu / Linux Mint e derivados)
+## 📦 Instalação via pacote .deb (recomendado para usuários)
+
+Baixe o `mini-synth_<versão>_all.deb` e instale:
+
+```bash
+sudo apt install ./mini-synth_1.1.0_all.deb
+```
+
+O `apt` resolve as dependências automaticamente (PySide6, python-rtmidi,
+PyYAML, libfluidsynth3 e a SoundFont `fluid-soundfont-gm`). Depois é só abrir
+**Mini Synth** pelo menu de aplicativos. Para remover: `sudo apt remove mini-synth`.
+
+> O pacote embute apenas o `pyfluidsynth` (módulo Python puro, MIT, sem pacote
+> apt). É `Architecture: all` — independente de arquitetura.
+
+### Gerar o .deb a partir do código
+
+```bash
+./scripts/install-ubuntu.sh      # cria o .venv (traz o pyfluidsynth a embutir)
+./scripts/build-deb.sh           # gera dist/mini-synth_<versão>_all.deb
+```
+
+## 🚀 Instalação a partir do código (desenvolvimento)
 
 ```bash
 git clone <este-repositorio> mini-synth
