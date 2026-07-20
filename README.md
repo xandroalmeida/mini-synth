@@ -1,8 +1,9 @@
 # 🎹 Mini Synth
 
 Transforma um **teclado controlador MIDI** em um instrumento musical simples,
-divertido e com a cara de um **equipamento de som dos anos 90** (skeuomórfico:
-alumínio escovado, visor dot-matrix, botões físicos e LEDs).
+divertido e com a cara de um **equipamento de som clássico**. Há temas
+skeuomórficos intercambiáveis: um módulo digital dos anos 90 e um receiver
+valvulado dos anos 60.
 
 Feito para **crianças**: abrir, clicar em um instrumento e tocar. Sem DAW, sem
 timeline, sem gravação, sem menus, sem dropdowns na tela principal.
@@ -22,7 +23,8 @@ timeline, sem gravação, sem menus, sem dropdowns na tela principal.
 - Botão grande **PARAR SOM** (panic) para resolver notas travadas.
 - **Knobs do teclado**: A1 troca o **banco**, A2 troca o **instrumento** (via
   Program Change ou CC).
-- Tela **CONFIG** simples para trocar SoundFont, redetectar MIDI e testar o som.
+- Tela **CONFIG** simples para trocar SoundFont, redetectar MIDI, testar o som
+  e escolher o tema visual.
 - Funciona **mesmo sem teclado** conectado (mostra aviso e permite testar o som).
 - Abre **maximizado** para aproveitar a tela toda.
 
@@ -39,9 +41,12 @@ intercambiáveis:
 3. `mock_backend` — para os testes automatizados.
 
 A interface é uma página web (`assets/web/`) renderizada pelo **pywebview** no
-WebKitGTK do sistema. Toda a aparência é HTML/CSS + `<canvas>`, **sem imagens
-externas**: os botões, o faceplate de metal e os LEDs são CSS (gradiente +
-box-shadow) e o visor dot-matrix é desenhado ponto a ponto num canvas.
+WebKitGTK do sistema. `index.html` é apenas o host e `app.js` mantém o estado
+e o contrato comportamental `MS.*`. Cada tema possui **template HTML e
+stylesheet próprios** em `assets/web/themes/`, portanto pode alterar toda a
+arquitetura física do aparelho, não apenas cores. Toda a aparência é HTML/CSS +
+`<canvas>`, **sem imagens externas**. O tema pode ser trocado em tempo real
+sem reiniciar áudio ou MIDI.
 
 ## 📦 Instalação via pacote .deb (recomendado para usuários)
 
@@ -49,7 +54,7 @@ Baixe o `mini-synth_<versão>_all.deb` e instale (**precisa de internet** na
 instalação):
 
 ```bash
-sudo apt install ./mini-synth_2.0.0_all.deb
+sudo apt install ./mini-synth_2.1.0_all.deb
 ```
 
 Por que internet? O pacote leva apenas o código e, na instalação, cria um
@@ -208,8 +213,8 @@ Os CCs dependem do teclado — confirme com `midi-debug.py` e ajuste.
 
 Criado automaticamente. Persiste entre execuções: **volume, reverb, oitava,
 último instrumento, último banco, o último instrumento usado em CADA banco
-(volta de onde parou), última SoundFont, dispositivo MIDI preferido e tela
-cheia.**
+(volta de onde parou), última SoundFont, dispositivo MIDI preferido, tela
+cheia e **último tema visual selecionado**.
 
 ### Logs — `~/.local/state/mini-synth/mini-synth.log`
 
@@ -229,7 +234,7 @@ pytest
 Cobrem: seleção de instrumentos, bancos (agrupamento + navegação A1/A2),
 banco/programa, **percussão no canal 9**, volume, reverb, transposição de
 oitava, panic, knobs (CC e Program Change), carregamento de configuração,
-persistência e reconexão MIDI.
+persistência, temas visuais e reconexão MIDI.
 
 ## 🛠️ Solução de problemas
 
@@ -260,9 +265,15 @@ src/
   audio/   synthesizer.py  fluidsynth_backend.py  subprocess_backend.py  mock_backend.py  factory.py
   midi/    device_manager.py  alsa.py
   ui/      web_bridge.py      # ponte Python↔interface web (pywebview)
+           themes.py          # registro e validação dos temas disponíveis
   util/    signal.py          # Signal síncrono (.connect/.emit)
   config/  loader.py  models.py
-assets/web/  index.html  style.css  app.js   # a interface (HTML/CSS/canvas)
+assets/web/  index.html  style.css  app.js   # host, defaults e estado comum
+             themes/                    # UIs completas e independentes
+               ms90-template.js         # arquitetura do rack digital
+               ms90.css                 # materiais do rack anos 90
+               tube60-template.js       # arquitetura do móvel valvulado
+               tube60.css               # materiais do aparelho anos 60
 config/  instruments.yaml
 scripts/ install-ubuntu.sh  build-deb.sh  make-icon.py  midi-monitor.py  midi-debug.py
 tests/   test_*.py

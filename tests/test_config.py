@@ -162,7 +162,13 @@ def test_user_settings_defaults_when_absent(tmp_path: Path) -> None:
 
 def test_user_settings_roundtrip(tmp_path: Path) -> None:
     path = tmp_path / "settings.yaml"
-    original = UserSettings(volume=55, reverb=50, octave=1, last_instrument="organ")
+    original = UserSettings(
+        volume=55,
+        reverb=50,
+        octave=1,
+        last_instrument="organ",
+        theme="tube60",
+    )
     loader.save_user_settings(original, path)
     assert path.exists()
     reloaded = loader.load_user_settings(path)
@@ -170,6 +176,7 @@ def test_user_settings_roundtrip(tmp_path: Path) -> None:
     assert reloaded.reverb == 50
     assert reloaded.octave == 1
     assert reloaded.last_instrument == "organ"
+    assert reloaded.theme == "tube60"
 
 
 def test_user_settings_bank_instruments_roundtrip(tmp_path: Path) -> None:

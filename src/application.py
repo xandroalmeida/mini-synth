@@ -57,7 +57,8 @@ class Application:
         # Banco atualmente exibido (A1 troca de banco; A2, de instrumento).
         self._current_bank: Bank | None = None
 
-        self.window = WebUiBridge(config)
+        self.window = WebUiBridge(config, settings.theme)
+        self._settings.theme = self.window.theme_id
         self.window.set_fullscreen(config.interface.fullscreen or settings.fullscreen)
         self._midi = MidiDeviceManager(preferred_device=settings.preferred_midi_device)
 
@@ -169,6 +170,7 @@ class Application:
         sp.rescan_requested.connect(self._on_rescan)
         sp.midi_device_selected.connect(self._on_midi_device_selected)
         sp.test_sound_requested.connect(self._on_test_sound)
+        sp.theme_selected.connect(self._on_theme_selected)
 
     def _wire_midi(self) -> None:
         self._midi.status_changed.connect(self._on_midi_status)
@@ -364,6 +366,7 @@ class Application:
         sp.set_audio_driver(self._config.audio.driver)
         names = [p.name for p in self._midi.list_ports() if p.is_physical]
         sp.set_midi_devices(names, self._midi.connected_device)
+        sp.set_theme(self._settings.theme)
 
     def _on_soundfont_chosen(self, path: str) -> None:
         if self._synth is None:
@@ -387,6 +390,10 @@ class Application:
         self._midi.set_preferred_device(name)
         self._settings.preferred_midi_device = name
         self._midi.rescan()
+        self._persist()
+
+    def _on_theme_selected(self, theme_id: str) -> None:
+        self._settings.theme = self.window.set_theme(theme_id)
         self._persist()
 
     # ------------------------------------------------------------------

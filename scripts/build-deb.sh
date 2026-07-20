@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
-VERSION="2.0.0"
+VERSION="2.1.0"
 PKG="mini-synth"
 ARCH="all"
 MAINTAINER="Alexandro Almeida <xandroalmeida@gmail.com>"
@@ -135,7 +135,7 @@ Comment: As dependências Python (pywebview, python-rtmidi, PyYAML, pyfluidsynth
  --system-site-packages em ${VENVDIR}. O WebKitGTK/PyGObject vêm do apt
  (Depends). A SoundFont vem do pacote apt 'fluid-soundfont-gm' (Depends).
 EOF
-printf '%s (%s) unstable; urgency=low\n\n  * Mini Synth: instrumento MIDI para crianças; interface pywebview (GTK/WebKit).\n\n -- %s  Thu, 01 Jan 1970 00:00:00 +0000\n' \
+printf '%s (%s) unstable; urgency=low\n\n  * Temas skeuomorficos independentes: rack digital MS-90 e console valvulado Tube 60.\n\n -- %s  Thu, 01 Jan 1970 00:00:00 +0000\n' \
     "${PKG}" "${VERSION}" "${MAINTAINER}" | gzip -9 -n > "${STAGE}/usr/share/doc/${PKG}/changelog.Debian.gz"
 
 ISIZE="$(du -s -k "${STAGE}/usr" | awk '{print $1}')"
@@ -153,11 +153,12 @@ Depends: python3 (>= 3.10), python3-venv, python3-pip, python3-gi, gir1.2-gtk-3.
 Recommends: fluidsynth
 Description: Instrumento MIDI simples para crianças (Mini Synth)
  Transforma um teclado controlador MIDI num instrumento musical simples,
- divertido e com aparência de equipamento de som dos anos 90. Feito para
+ divertido e com temas skeuomórficos de equipamentos de som históricos. Feito para
  crianças: abrir, escolher um som e tocar.
  .
  Sons organizados em bancos (TECLAS, CORDAS, SOPROS, BATERIA...), navegação
- pelos knobs do teclado (A1 = banco, A3 = instrumento) e memória por banco.
+ pelos knobs do teclado (A1 = banco, A3 = instrumento), memória por banco e
+ escolha persistente entre os temas MS-90 e Tube 60.
  .
  A interface usa pywebview sobre o WebKitGTK do sistema (gir1.2-webkit2-4.1).
  Bibliotecas Python leves (pywebview, python-rtmidi, PyYAML, pyfluidsynth) são

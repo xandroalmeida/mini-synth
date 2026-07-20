@@ -21,6 +21,7 @@ import logging
 
 from ..config.models import AppConfig, Bank, Instrument
 from ..util.signal import Signal
+from .themes import DEFAULT_THEME, normalize_theme, theme_options
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,7 @@ class SettingsPageProxy:
         self.rescan_requested = Signal()
         self.midi_device_selected = Signal()
         self.test_sound_requested = Signal()
+        self.theme_selected = Signal()
 
     def set_soundfont(self, path: str) -> None:
         self._bridge._push(f"MS.setSetting('soundfont', {json.dumps(path or '—')})")
@@ -108,6 +110,9 @@ class SettingsPageProxy:
         self._bridge._push(
             f"MS.setMidiDevices({json.dumps(names)}, {json.dumps(current or '')})"
         )
+
+    def set_theme(self, theme_id: str) -> str:
+        return self._bridge.set_theme(theme_id)
 
 
 class Api:
@@ -169,6 +174,9 @@ class Api:
     def test_sound(self) -> None:
         self._bridge.settings_page.test_sound_requested.emit()
 
+    def select_theme(self, theme_id: str) -> None:
+        self._bridge.settings_page.theme_selected.emit(theme_id)
+
     def choose_soundfont(self) -> None:
         """Abre o diálogo nativo do pywebview para escolher uma SoundFont."""
         window = self._bridge.window_handle
@@ -193,7 +201,7 @@ class Api:
 class WebUiBridge:
     """Fachada da interface: API pública consumida pelo ``Application``."""
 
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(self, config: AppConfig, theme: str = DEFAULT_THEME) -> None:
         self.config = config
         self._window = None  # webview.Window, atribuído em attach()
 
@@ -212,6 +220,7 @@ class WebUiBridge:
         self._current_bank: Bank | None = None
         self._page = "main"
         self._fullscreen = False
+        self._theme_id = normalize_theme(theme)
 
     # ------------------------------------------------------------------
     # ligação com a janela pywebview
@@ -238,8 +247,13 @@ class WebUiBridge:
         payload = {
             "banks": [_bank_dict(b) for b in self.config.banks],
             "columns": self.config.interface.columns,
+            "theme": self._theme_id,
+            "themes": theme_options(),
         }
-        self._push(f"MS.init({json.dumps(payload, ensure_ascii=False)})")
+        # WebKitGTK recebe de pywebview o comprimento do script separadamente.
+        # Escapar Unicode evita que caracteres multibyte façam o backend cortar
+        # o payload grande antes do fechamento ("Unexpected end of script").
+        self._push(f"MS.init({json.dumps(payload, ensure_ascii=True)})")
 
     # ------------------------------------------------------------------
     # API consumida pelo Application
@@ -261,6 +275,17 @@ class WebUiBridge:
 
     def set_audio_status(self, state: str, message: str = "") -> None:
         self._push(f"MS.setStatus('audio', {json.dumps(state)}, {json.dumps(message)})")
+
+    @property
+    def theme_id(self) -> str:
+        return self._theme_id
+
+    def set_theme(self, theme_id: str) -> str:
+        normalized = normalize_theme(theme_id)
+        if normalized != self._theme_id:
+            self._theme_id = normalized
+            self._push(f"MS.setTheme({json.dumps(self._theme_id)})")
+        return self._theme_id
 
     def show_main(self) -> None:
         self._page = "main"

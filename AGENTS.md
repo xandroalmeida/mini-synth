@@ -38,7 +38,7 @@ dropdowns na tela principal. Simplicidade é requisito, não preguiça.
 source .venv/bin/activate
 python -m src.main            # ou ./run.sh   (janela 1100×720, ou fullscreen se configurado)
 MINI_SYNTH_DEBUG=1 python -m src.main   # loga cada evento MIDI + erros de evaluate_js
-pytest                        # 73 testes, sem hardware/áudio/gráfico real
+pytest                        # 81 testes, sem hardware/áudio/gráfico real
 python scripts/midi-debug.py     # bytes crus + descrição humana de cada comando MIDI
 python scripts/midi-monitor.py   # resume os CCs de cada knob (gire um de cada vez)
 ```
@@ -62,10 +62,15 @@ python scripts/midi-monitor.py   # resume os CCs de cada knob (gire um de cada v
    o http server embutido dele dá **404 nos assets** (`app.js`/`style.css`).
 2. **`pkill -f "src.main"` mata o próprio comando** (o wrapper do shell contém
    a string). Use o truque de regex: `pkill -f "[p]ython -m src.main"`.
-3. **Botões/visor/LEDs são CSS + canvas** (`assets/web/style.css`, `app.js`).
-   O VFD é a fonte 5×7 `_FONT` desenhada num `<canvas>` (`drawVfd`), com
-   glow/scanlines/reflexo. Skeuomorfismo em CSS (gradiente + box-shadow +
-   `:active`), **sem imagens externas**.
+3. **Botões/visor/LEDs são CSS + canvas** (`assets/web/themes/*.css`, `app.js`).
+   No tema MS-90, o VFD é a fonte 5×7 `_FONT` desenhada num `<canvas>` pelo
+   `renderIndicator`, com glow/scanlines/reflexo. Skeuomorfismo em CSS (gradiente + box-shadow +
+   `:active`), **sem imagens externas**. `style.css` contém apenas o contrato
+   compartilhado. Cada tema tem um par independente
+   `themes/<id>-template.js` + `themes/<id>.css`; `app.js` reconstrói o DOM
+   e restaura todo o estado ao trocar. O registro/whitelist fica em
+   `src/ui/themes.py`; tema inválido cai em `ms90`. A escolha é persistida
+   em `UserSettings.theme`.
 4. **O teclado troca o protocolo dos knobs conforme o modo/banco.** Os knobs já
    apareceram como CCs diferentes E como **Program Change** dependendo do modo.
    Por isso o app trata Program Change E CC. Não presuma um número fixo; confirme
@@ -112,9 +117,14 @@ src/
     models.py            # dataclasses validadas (AppConfig, Instrument, ControlsConfig, UserSettings)
     loader.py            # YAML + persistência + busca de SoundFont
 assets/web/            # A INTERFACE (HTML/CSS/JS).
-  index.html           # 3 páginas: #page-main / #page-settings / #page-error
-  style.css            # skeuomorfismo 90s: botões, faceplate, LEDs, parafusos (CSS puro)
-  app.js               # namespace MS.* (chamado pelo Python); VFD dot-matrix 5x7 em <canvas>
+  index.html           # host mínimo: #app-shell + scripts compartilhados
+  style.css            # contrato/defaults compartilhados, sem identidade visual
+  app.js               # estado/namespace MS.*; troca template e restaura a UI
+  themes/
+    ms90-template.js   # markup próprio do módulo digital em rack
+    ms90.css           # módulo digital anos 90
+    tube60-template.js # markup próprio do móvel valvulado
+    tube60.css         # receiver valvulado anos 60
 ```
 
 ### Fluxo MIDI (importante)
@@ -143,6 +153,17 @@ sem janela.
 ## Convenções / o que NÃO quebrar
 
 - Type hints em todo lugar; dataclasses validam a config (`models.py`).
+- **Skeuomorphism é requisito vital, não apenas uma paleta de cores.** Cada
+  tema deve representar um aparelho fisicamente coerente com sua época, com
+  arquitetura, hierarquia, materiais, controles, proporções e detalhes
+  próprios. É proibido criar um tema novo apenas recolorindo o layout de outro.
+  O MS-90 é um módulo digital de rack; o Tube 60 é um móvel valvulado e deve ter
+  template HTML e stylesheet independentes. Somente o contrato comportamental
+  `MS.*` e os dados podem ser compartilhados. Elementos anacrônicos são
+  proibidos: o Tube 60 não usa VFD, dot-matrix, texto luminoso ou readout
+  digital; nele, o nome da voz aparece num tambor eletromecânico de celuloide,
+  com escala impressa e tinta escura, e os níveis usam medidores analógicos com
+  ponteiro.
 - Tela principal: **sem menus, sem dropdowns**. Dropdown só na tela CONFIG.
 - Erros na UI são **mensagens simples** + botão TENTAR NOVAMENTE; nunca
   stack trace. Detalhes vão para o log.

@@ -304,6 +304,7 @@ class UserSettings:
     last_soundfont: str = ""
     preferred_midi_device: str = ""
     fullscreen: bool = False
+    theme: str = "ms90"
 
     def __post_init__(self) -> None:
         self.volume = max(0, min(100, int(self.volume)))
@@ -332,6 +333,7 @@ class UserSettings:
             last_soundfont=str(data.get("last_soundfont", "") or ""),
             preferred_midi_device=str(data.get("preferred_midi_device", "") or ""),
             fullscreen=bool(data.get("fullscreen", False)),
+            theme=str(data.get("theme", "ms90") or "ms90"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -345,4 +347,5 @@ class UserSettings:
             "last_soundfont": self.last_soundfont,
             "preferred_midi_device": self.preferred_midi_device,
             "fullscreen": self.fullscreen,
+            "theme": self.theme,
         }
