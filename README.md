@@ -44,23 +44,25 @@ código.
 
 ## 📦 Instalação via pacote .deb (recomendado para usuários)
 
-Baixe o `mini-synth_<versão>_all.deb` e instale:
+Baixe o `mini-synth_<versão>_all.deb` e instale (**precisa de internet** na
+instalação):
 
 ```bash
 sudo apt install ./mini-synth_1.1.0_all.deb
 ```
 
-O `apt` resolve as dependências automaticamente (PySide6, python-rtmidi,
-PyYAML, libfluidsynth3 e a SoundFont `fluid-soundfont-gm`). Depois é só abrir
-**Mini Synth** pelo menu de aplicativos. Para remover: `sudo apt remove mini-synth`.
+Por que internet? O **PySide6 não está no apt do Ubuntu 24.04** (só o PySide2,
+que é Qt5). Então o pacote leva apenas o código e, na instalação, cria um
+ambiente Python isolado em `/opt/mini-synth/venv` e baixa via **pip** o PySide6,
+`python-rtmidi`, `PyYAML` e `pyfluidsynth`. As demais dependências vêm do apt
+(`python3-venv`, `python3-pip`, `libfluidsynth3`, `fluid-soundfont-gm`).
 
-> O pacote embute apenas o `pyfluidsynth` (módulo Python puro, MIT, sem pacote
-> apt). É `Architecture: all` — independente de arquitetura.
+Depois é só abrir **Mini Synth** pelo menu de aplicativos. Para remover (também
+apaga o venv): `sudo apt remove mini-synth`. O pacote é `Architecture: all`.
 
 ### Gerar o .deb a partir do código
 
 ```bash
-./scripts/install-ubuntu.sh      # cria o .venv (traz o pyfluidsynth a embutir)
 ./scripts/build-deb.sh           # gera dist/mini-synth_<versão>_all.deb
 ```
 

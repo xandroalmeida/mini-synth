@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Gera o pacote .deb do Mini Synth (Ubuntu / Linux Mint e derivados).
 #
-# Estratégia: dependemos do apt para as bibliotecas pesadas (PySide6, rtmidi,
-# PyYAML, libfluidsynth3, SoundFont) e EMBUTIMOS apenas o pyfluidsynth — um
-# único módulo Python puro (MIT) que não tem pacote apt. Com isso o pacote é
-# leve e "Architecture: all" (independente de arquitetura).
+# Estratégia (o PySide6 NÃO existe no apt do Ubuntu 24.04): o .deb leva apenas
+# o código e, na instalação, um postinst cria um venv em /opt/mini-synth/venv e
+# instala as dependências Python via pip (PySide6, python-rtmidi, PyYAML,
+# pyfluidsynth). Assim o pacote fica pequeno e "Architecture: all", e o pip
+# sempre traz os binários certos para o Python/arquitetura do alvo.
+# Requisito: INTERNET no momento da instalação.
 #
 # Uso:   ./scripts/build-deb.sh
 # Saída: dist/mini-synth_<versão>_all.deb
@@ -18,65 +20,86 @@ PKG="mini-synth"
 ARCH="all"
 MAINTAINER="Alexandro Almeida <xandroalmeida@gmail.com>"
 
+# Dependências Python instaladas via pip no postinst.
+PYDEPS="PySide6>=6.6 python-rtmidi>=1.5 PyYAML>=6.0 pyfluidsynth>=1.3.3"
+
 BUILD="${ROOT}/build/deb"
 STAGE="${BUILD}/${PKG}"
 APPDIR="usr/share/${PKG}"          # onde o código vive dentro do pacote
+VENVDIR="/opt/${PKG}/venv"         # venv criado no alvo (postinst)
 DIST="${ROOT}/dist"
 
 BOLD="$(tput bold 2>/dev/null || true)"; RESET="$(tput sgr0 2>/dev/null || true)"
 info() { echo "${BOLD}==>${RESET} $*"; }
 
-# --- localizar o pyfluidsynth (fluidsynth.py) para embutir --------------------
-find_pyfluidsynth() {
-    if [ -f "${ROOT}/.venv/lib/python3.12/site-packages/fluidsynth.py" ]; then
-        echo "${ROOT}/.venv/lib/python3.12/site-packages/fluidsynth.py"; return
-    fi
-    # fallback: pergunta ao Python (venv ativo ou sistema)
-    python3 - <<'PY' 2>/dev/null || true
-import importlib.util as u
-s = u.find_spec("fluidsynth")
-print(s.origin if s and s.origin and s.origin.endswith(".py") else "")
-PY
-}
-
 info "Limpando build anterior..."
 rm -rf "${BUILD}"
-mkdir -p "${STAGE}/DEBIAN"
-mkdir -p "${STAGE}/${APPDIR}" \
+mkdir -p "${STAGE}/DEBIAN" \
+         "${STAGE}/${APPDIR}" \
          "${STAGE}/usr/bin" \
          "${STAGE}/usr/share/applications" \
          "${STAGE}/usr/share/icons/hicolor/256x256/apps" \
-         "${STAGE}/usr/share/doc/${PKG}" \
-         "${STAGE}/${APPDIR}/vendor"
+         "${STAGE}/usr/share/doc/${PKG}"
 
 info "Copiando aplicação (src, config, assets)..."
 cp -r "${ROOT}/src"    "${STAGE}/${APPDIR}/"
 cp -r "${ROOT}/config" "${STAGE}/${APPDIR}/"
 cp -r "${ROOT}/assets" "${STAGE}/${APPDIR}/"
-# remove caches de bytecode
 find "${STAGE}/${APPDIR}" -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 find "${STAGE}/${APPDIR}" -name '*.pyc' -delete 2>/dev/null || true
-
-info "Embutindo pyfluidsynth (vendor)..."
-PYFS="$(find_pyfluidsynth)"
-if [ -z "${PYFS}" ] || [ ! -f "${PYFS}" ]; then
-    echo "ERRO: não encontrei o fluidsynth.py (pyfluidsynth). Rode 'pip install pyfluidsynth' no .venv." >&2
-    exit 1
-fi
-cp "${PYFS}" "${STAGE}/${APPDIR}/vendor/fluidsynth.py"
 
 info "Criando lançador /usr/bin/${PKG}..."
 cat > "${STAGE}/usr/bin/${PKG}" <<EOF
 #!/bin/sh
 # Lançador do Mini Synth (instalado via .deb).
 APPDIR="/${APPDIR}"
-# Roda de dentro do APPDIR para que 'python3 -m src.main' pegue o pacote
-# instalado (e não algum 'src' do diretório atual). vendor/ traz o pyfluidsynth.
+VENV="${VENVDIR}"
+if [ ! -x "\${VENV}/bin/python" ]; then
+    echo "Mini Synth: ambiente Python ausente. Reinstale com:" >&2
+    echo "  sudo apt install --reinstall ${PKG}" >&2
+    exit 1
+fi
 cd "\${APPDIR}" || exit 1
-export PYTHONPATH="\${APPDIR}/vendor\${PYTHONPATH:+:\${PYTHONPATH}}"
-exec python3 -m src.main "\$@"
+exec "\${VENV}/bin/python" -m src.main "\$@"
 EOF
 chmod 0755 "${STAGE}/usr/bin/${PKG}"
+
+info "Escrevendo maintainer scripts (postinst/postrm)..."
+cat > "${STAGE}/DEBIAN/postinst" <<EOF
+#!/bin/sh
+set -e
+VENV="${VENVDIR}"
+PYDEPS="${PYDEPS}"
+
+case "\$1" in
+  configure)
+    echo "Mini Synth: preparando ambiente Python em \${VENV} (requer internet)..."
+    if [ ! -x "\${VENV}/bin/python" ]; then
+        python3 -m venv "\${VENV}"
+    fi
+    "\${VENV}/bin/python" -m pip install --upgrade pip
+    # shellcheck disable=SC2086
+    "\${VENV}/bin/python" -m pip install \${PYDEPS}
+    command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q || true
+    command -v gtk-update-icon-cache >/dev/null 2>&1 && gtk-update-icon-cache -qtf /usr/share/icons/hicolor || true
+    echo "Mini Synth: pronto. Abra pelo menu de aplicativos."
+    ;;
+esac
+exit 0
+EOF
+
+cat > "${STAGE}/DEBIAN/postrm" <<EOF
+#!/bin/sh
+set -e
+case "\$1" in
+  remove|purge)
+    rm -rf /opt/${PKG}
+    command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q || true
+    ;;
+esac
+exit 0
+EOF
+chmod 0755 "${STAGE}/DEBIAN/postinst" "${STAGE}/DEBIAN/postrm"
 
 info "Instalando atalho de menu e ícone..."
 cat > "${STAGE}/usr/share/applications/${PKG}.desktop" <<EOF
@@ -104,17 +127,13 @@ Files: *
 Copyright: 2026 Alexandro Almeida
 License: MIT
 
-Files: ${APPDIR}/vendor/fluidsynth.py
-Copyright: pyfluidsynth authors
-License: MIT
-Comment: pyfluidsynth (https://github.com/nwhitehead/pyfluidsynth) embutido por
- não haver pacote apt. A SoundFont NÃO é distribuída aqui (vem de
- 'fluid-soundfont-gm' via Depends).
+Comment: As dependências Python (PySide6, python-rtmidi, PyYAML, pyfluidsynth)
+ são instaladas via pip no momento da instalação, num venv em ${VENVDIR}.
+ A SoundFont vem do pacote apt 'fluid-soundfont-gm' (Depends).
 EOF
 printf '%s (%s) unstable; urgency=low\n\n  * Bancos, bateria, navegação por knobs e memória por banco.\n\n -- %s  Thu, 01 Jan 1970 00:00:00 +0000\n' \
     "${PKG}" "${VERSION}" "${MAINTAINER}" | gzip -9 -n > "${STAGE}/usr/share/doc/${PKG}/changelog.Debian.gz"
 
-# --- Installed-Size (KB) ------------------------------------------------------
 ISIZE="$(du -s -k "${STAGE}/usr" | awk '{print $1}')"
 
 info "Escrevendo DEBIAN/control..."
@@ -126,7 +145,7 @@ Priority: optional
 Architecture: ${ARCH}
 Maintainer: ${MAINTAINER}
 Installed-Size: ${ISIZE}
-Depends: python3 (>= 3.10), python3-pyside6.qtcore, python3-pyside6.qtgui, python3-pyside6.qtwidgets, python3-rtmidi, python3-yaml, libfluidsynth3 | libfluidsynth2, fluid-soundfont-gm
+Depends: python3 (>= 3.10), python3-venv, python3-pip, libfluidsynth3 | libfluidsynth2, fluid-soundfont-gm
 Recommends: fluidsynth
 Description: Instrumento MIDI simples para crianças (Mini Synth)
  Transforma um teclado controlador MIDI num instrumento musical simples,
@@ -135,9 +154,11 @@ Description: Instrumento MIDI simples para crianças (Mini Synth)
  .
  Sons organizados em bancos (TECLAS, CORDAS, SOPROS, BATERIA...), navegação
  pelos knobs do teclado (A1 = banco, A3 = instrumento) e memória por banco.
+ .
+ As bibliotecas Python (PySide6 etc.) são instaladas via pip na instalação,
+ portanto é necessária conexão com a internet ao instalar o pacote.
 EOF
 
-# permissões corretas dos diretórios/arquivos
 find "${STAGE}" -type d -exec chmod 0755 {} +
 find "${STAGE}/${APPDIR}" -type f -exec chmod 0644 {} +
 chmod 0644 "${STAGE}/usr/share/applications/${PKG}.desktop" \
@@ -145,7 +166,7 @@ chmod 0644 "${STAGE}/usr/share/applications/${PKG}.desktop" \
            "${STAGE}/usr/share/doc/${PKG}/copyright" \
            "${STAGE}/usr/share/doc/${PKG}/changelog.Debian.gz" \
            "${STAGE}/DEBIAN/control"
-chmod 0755 "${STAGE}/usr/bin/${PKG}"
+chmod 0755 "${STAGE}/usr/bin/${PKG}" "${STAGE}/DEBIAN/postinst" "${STAGE}/DEBIAN/postrm"
 
 info "Construindo o pacote..."
 mkdir -p "${DIST}"
