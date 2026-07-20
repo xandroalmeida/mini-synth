@@ -1,9 +1,9 @@
 # 🎹 Mini Synth
 
 Transforma um **teclado controlador MIDI** em um instrumento musical simples,
-divertido e com a cara de um **equipamento de som clássico**. Há temas
-skeuomórficos intercambiáveis: um módulo digital dos anos 90 e um receiver
-valvulado dos anos 60.
+divertido e com a cara de um **equipamento de som físico**. Há temas
+skeuomórficos intercambiáveis: um módulo digital dos anos 90, um receiver
+valvulado dos anos 60 e um console industrial cyberpunk.
 
 Feito para **crianças**: abrir, clicar em um instrumento e tocar. Sem DAW, sem
 timeline, sem gravação, sem menus, sem dropdowns na tela principal.
@@ -54,7 +54,7 @@ Baixe o `mini-synth_<versão>_all.deb` e instale (**precisa de internet** na
 instalação):
 
 ```bash
-sudo apt install ./mini-synth_2.1.0_all.deb
+sudo apt install ./mini-synth_2.2.0_all.deb
 ```
 
 Por que internet? O pacote leva apenas o código e, na instalação, cria um
