@@ -20,10 +20,14 @@ class _FakeWindow:
         self.scripts.append(script)
 
 
-def test_theme_registry_has_default_and_tube60() -> None:
+def test_theme_registry_has_all_independent_themes() -> None:
     options = theme_options()
     assert options[0]["id"] == DEFAULT_THEME == "ms90"
-    assert {option["id"] for option in options} == {"ms90", "tube60"}
+    assert {option["id"] for option in options} == {
+        "ms90",
+        "tube60",
+        "neonforge",
+    }
 
 
 def test_invalid_theme_falls_back_to_default() -> None:
@@ -42,6 +46,7 @@ def test_bridge_initializes_with_saved_theme() -> None:
     assert any('"theme": "tube60"' in script for script in window.scripts)
     assert any('"id": "ms90"' in script for script in window.scripts)
     assert any('"id": "tube60"' in script for script in window.scripts)
+    assert any('"id": "neonforge"' in script for script in window.scripts)
 
 
 def test_bridge_switches_theme_and_sanitizes_unknown_id() -> None:
@@ -68,7 +73,7 @@ def test_api_emits_selected_theme() -> None:
 
 def test_each_theme_has_an_independent_template_and_stylesheet() -> None:
     themes_dir = WEB_DIR / "themes"
-    for theme_id in ("ms90", "tube60"):
+    for theme_id in ("ms90", "tube60", "neonforge"):
         theme_dir = themes_dir / theme_id
         assert (theme_dir / "AGENTS.md").is_file()
         assert (theme_dir / "template.js").is_file()
@@ -105,8 +110,26 @@ def test_tube60_mechanical_selector_has_motion_and_position_feedback() -> None:
     assert "transition:left" in tube_css
 
 
+def test_neonforge_is_a_distinct_physical_console_with_local_ai_asset() -> None:
+    themes_dir = WEB_DIR / "themes"
+    template = (themes_dir / "neonforge" / "template.js").read_text(
+        encoding="utf-8"
+    )
+    css = (themes_dir / "neonforge" / "style.css").read_text(encoding="utf-8")
+
+    assert "patch-spine" in template
+    assert "power-spine" in template
+    assert "cartridge-bay" in template
+    assert "maintenance-bay" in template
+    assert "speaker-cone" not in template
+    assert "rack-footer" not in template
+    assert "chassis-backplate.png" in css
+    assert (themes_dir / "neonforge" / "assets" / "chassis-backplate.png").is_file()
+
+
 def test_index_is_only_the_shared_theme_host() -> None:
     index = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     assert '<main id="app-shell"></main>' in index
     assert "themes/ms90/template.js" in index
     assert "themes/tube60/template.js" in index
+    assert "themes/neonforge/template.js" in index

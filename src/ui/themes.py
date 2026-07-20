@@ -14,6 +14,7 @@ class UiTheme:
 THEMES: tuple[UiTheme, ...] = (
     UiTheme("ms90", "Digital MS-90 · Anos 90"),
     UiTheme("tube60", "Valvulado Hi-Fi · Anos 60"),
+    UiTheme("neonforge", "Neon Forge KID/01 · Cyberpunk"),
 )
 DEFAULT_THEME = THEMES[0].id
 _THEME_IDS = frozenset(theme.id for theme in THEMES)
