@@ -30,6 +30,12 @@ como seria construído, iluminado e operado fisicamente entre 1958 e 1968.
   preenchimento plano.
 - CONFIG como painel de serviço próprio do móvel, não como rack digital.
 
+- Materiais fotográficos locais gerados por IA são permitidos para representar
+  superfícies físicas reais, desde que não contenham controles interativos
+  pintados. Os assets canônicos ficam em `assets/`: `walnut-veneer.png` para o
+  móvel, `speaker-cloth.png` para a tela acústica e `valve-bay.png` para o
+  compartimento valvulado. CSS/HTML continuam responsáveis por molduras,
+  estados, texto e interação.
 ## Anacronismos proibidos
 
 - **Nenhum `<canvas>` neste template.** Não usar VFD, LCD, LED numérico,

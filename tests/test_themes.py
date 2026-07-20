@@ -85,9 +85,11 @@ def test_tube60_is_structurally_different_from_ms90() -> None:
     ms90 = (themes_dir / "ms90" / "template.js").read_text(encoding="utf-8")
     tube60 = (themes_dir / "tube60" / "template.js").read_text(encoding="utf-8")
 
+    tube_css = (themes_dir / "tube60" / "style.css").read_text(encoding="utf-8")
+    tube_assets = themes_dir / "tube60" / "assets"
     assert "rack-footer" in ms90
     assert "speaker-cone" not in ms90
-    assert "speaker-cone" in tube60
+    assert "speaker-cloth" in tube60
     assert "valve-window" in tube60
     assert "tube-control-deck" in tube60
     assert "service-grid" in tube60
@@ -96,6 +98,13 @@ def test_tube60_is_structurally_different_from_ms90() -> None:
     assert 'data-indicator="mechanical"' in tube60
     assert 'data-indicator="analog"' in tube60
     assert "voice-drum" in tube60
+    assert "walnut-veneer.png" in tube_css
+    assert "speaker-cloth.png" in tube_css
+    assert "valve-bay.png" in tube_css
+    assert (tube_assets / "walnut-veneer.png").is_file()
+    assert (tube_assets / "speaker-cloth.png").is_file()
+    assert (tube_assets / "valve-bay.png").is_file()
+    assert "speaker-cone" not in tube60
 
 
 def test_tube60_mechanical_selector_has_motion_and_position_feedback() -> None:

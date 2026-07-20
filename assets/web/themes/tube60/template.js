@@ -14,7 +14,7 @@ window.MS_THEME_TEMPLATES.tube60 = function(){
         <button class="ivory-key cfg" id="btn-config">AJUSTES</button>
       </header>
       <div class="tube-stage">
-        <aside class="speaker speaker-left"><div class="speaker-cone"><i></i></div><div class="speaker-badge">HIGH FIDELITY</div></aside>
+        <aside class="speaker speaker-left"><div class="speaker-cloth"><i class="speaker-shadow woofer"></i><i class="speaker-shadow tweeter"></i></div><div class="speaker-badge">HIGH FIDELITY</div></aside>
         <main class="tube-console">
           <div class="tuning-window">
             <div class="mechanical-scale" aria-hidden="true"><span>I</span><span>II</span><span>III</span><span>IV</span><span>V</span><span>VI</span><span>VII</span><span>VIII</span></div>
@@ -31,7 +31,7 @@ window.MS_THEME_TEMPLATES.tube60 = function(){
           </div>
         </main>
         <aside class="valve-bay">
-          <div class="valve-window"><span class="valve v1"></span><span class="valve v2"></span><span class="valve v3"></span></div>
+          <div class="valve-window"><span class="valve-photo" aria-hidden="true"></span></div>
           <strong>3 VALVES</strong><small>WARM TONE AMPLIFIER</small>
           <div class="vent-slots"><i></i><i></i><i></i><i></i><i></i></div>
         </aside>

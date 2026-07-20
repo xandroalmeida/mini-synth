@@ -21,8 +21,9 @@ body{
   color:var(--ink);
   font-family:Georgia,"Times New Roman",serif;
   background:
-    radial-gradient(ellipse at 50% 15%,rgba(243,174,83,.12),transparent 48%),
-    repeating-linear-gradient(90deg,#100603 0 3px,#211008 3px 7px,#0d0502 7px 10px);
+    radial-gradient(ellipse at 50% 10%,rgba(226,154,67,.13),transparent 48%),
+    linear-gradient(rgba(16,6,2,.7),rgba(8,3,1,.94)),
+    url("assets/walnut-veneer.png") center/cover fixed;
   -webkit-user-select:none;user-select:none;
 }
 .hidden{display:none!important}
@@ -33,10 +34,9 @@ body{
   position:relative;height:100%;display:flex;flex-direction:column;gap:9px;padding:13px 17px 8px;
   border:3px solid #180803;border-radius:18px 18px 10px 10px;
   background:
-    linear-gradient(90deg,rgba(24,7,1,.7),transparent 4%,transparent 96%,rgba(22,6,1,.72)),
-    repeating-linear-gradient(87deg,rgba(255,208,132,.07) 0 1px,transparent 1px 7px),
-    radial-gradient(ellipse at 48% 5%,rgba(181,80,31,.68),transparent 46%),
-    linear-gradient(180deg,#823716,#56220e 58%,#321307);
+    linear-gradient(90deg,rgba(25,7,1,.72),rgba(104,47,18,.09) 13%,rgba(120,56,21,.05) 87%,rgba(22,6,1,.75)),
+    linear-gradient(180deg,rgba(255,178,88,.1),rgba(26,8,2,.38)),
+    url("assets/walnut-veneer.png") center/cover;
   box-shadow:inset 0 0 0 5px #a45628,inset 0 0 0 8px #351407,inset 0 0 28px #160601,0 9px 22px rgba(0,0,0,.72);
 }
 .tube-cabinet::before,.tube-cabinet::after{
@@ -87,20 +87,15 @@ body{
 .tube-stage{flex:1;min-height:0;display:grid;grid-template-columns:145px minmax(0,1fr) 118px;gap:11px}
 .speaker{
   position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  border:3px solid #351708;border-radius:10px;
-  background:
-    repeating-linear-gradient(45deg,rgba(54,30,15,.42) 0 1px,transparent 1px 4px),
-    repeating-linear-gradient(-45deg,rgba(247,213,151,.16) 0 1px,transparent 1px 5px),
-    linear-gradient(180deg,#a8895f,#6f5436);
-  box-shadow:inset 0 0 17px #291407,0 2px 3px rgba(17,5,1,.6);
+  border:7px solid #3b1608;border-radius:10px;background:url("assets/walnut-veneer.png") center/cover;
+  box-shadow:inset 0 0 0 2px #9a5127,inset 0 0 18px #160701,0 3px 5px rgba(17,5,1,.7);
 }
-.speaker-cone{
-  width:112px;height:112px;display:grid;place-items:center;border-radius:50%;
-  background:radial-gradient(circle,#5d4c35 0 14%,#2e261d 15% 34%,#73634b 36% 42%,#242019 45% 67%,#5f513d 70%);
-  opacity:.56;box-shadow:0 0 0 5px rgba(42,29,17,.5),inset 0 0 20px #100b07;
-}
-.speaker-cone i{width:29px;height:29px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#83715a,#251e17);box-shadow:0 2px 5px #100b07}
-.speaker-badge{position:absolute;bottom:17px;padding:4px 8px;border:1px solid #6b451c;color:#4a2d12;background:#c49b5f;font-size:6px;font-weight:800;letter-spacing:1.3px;box-shadow:0 1px #ead09b}
+.speaker-cloth{position:absolute;inset:7px;overflow:hidden;border:1px solid #4b3420;border-radius:3px;background:linear-gradient(rgba(91,64,38,.08),rgba(41,25,13,.2)),url("assets/speaker-cloth.png") center/cover;box-shadow:inset 0 0 24px rgba(37,20,8,.7),0 0 0 2px #6f3c1d}
+.speaker-cloth::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,rgba(255,240,195,.15),transparent 31%,rgba(44,23,9,.13) 74%);mix-blend-mode:multiply}
+.speaker-shadow{position:absolute;display:block;border-radius:50%;background:radial-gradient(circle,rgba(31,24,15,.28),rgba(31,24,15,.15) 43%,transparent 67%);filter:blur(1px)}
+.speaker-shadow.woofer{left:50%;top:48%;width:118px;height:118px;transform:translate(-50%,-50%)}
+.speaker-shadow.tweeter{left:50%;top:17%;width:48px;height:48px;transform:translateX(-50%);opacity:.65}
+.speaker-badge{position:absolute;z-index:2;bottom:17px;padding:4px 9px;border:1px solid #63431e;color:#40240d;background:linear-gradient(#ddc17e,#a4773d);font-size:6px;font-weight:800;letter-spacing:1.3px;box-shadow:0 1px #f0d698,0 2px 4px rgba(34,16,5,.5)}
 
 .tube-console{min-width:0;display:flex;flex-direction:column;gap:7px}
 .tuning-window{
@@ -160,7 +155,7 @@ body{
 .tab::before{content:attr(data-number);position:absolute;top:2px;left:3px;color:#9e7953;font-size:5px}
 .tab.selected{color:#3c1705;background:radial-gradient(ellipse at 50% 58%,#fff0a6,#f4a438 45%,#bd4c12 85%);text-shadow:0 1px #ffe7a2;box-shadow:0 2px 0 #702506,0 0 10px #ef731e,inset 0 1px #fffbd0}
 
-.tube-voice-panel{flex:1;min-height:150px;padding:23px 9px 8px;border:3px solid #351708;border-radius:9px;background:linear-gradient(180deg,#b9955d,#806038);box-shadow:inset 0 3px 7px rgba(44,18,5,.48),0 1px #d8b578;position:relative}
+.tube-voice-panel{flex:1;min-height:150px;padding:23px 9px 8px;border:4px solid #351708;border-radius:9px;background:linear-gradient(180deg,rgba(213,174,112,.82),rgba(115,71,33,.76)),url("assets/walnut-veneer.png") center/cover;box-shadow:inset 0 0 0 1px #c28a50,inset 0 4px 10px rgba(35,13,3,.62),0 2px 3px rgba(28,8,1,.7);position:relative}
 .voice-heading{position:absolute;top:7px;left:11px;right:11px;display:flex;justify-content:space-between;color:#4b2a11;font-size:7px;font-weight:800;letter-spacing:1.4px;text-shadow:0 1px #d9b77d}
 .grid-stack,.grid{height:100%}.grid{display:none;grid-auto-rows:1fr;gap:7px 9px}.grid.active{display:grid}
 .inst{
@@ -178,18 +173,17 @@ body{
 @keyframes incandescent{0%{filter:brightness(.35)}45%{filter:brightness(1.3)}72%{filter:brightness(.84)}100%{filter:brightness(1)}}
 
 .valve-bay{
-  display:flex;flex-direction:column;align-items:center;padding:12px 8px;border:3px solid #291107;border-radius:10px;
-  color:#c69c5c;background:linear-gradient(180deg,#261008,#0d0503);box-shadow:inset 0 0 0 2px #75431b,inset 0 4px 15px #000,0 2px #a66b2e;text-align:center;
+  display:flex;flex-direction:column;align-items:center;padding:11px 8px;border:5px solid #311107;border-radius:10px;
+  color:#d3ae73;background:linear-gradient(rgba(57,20,7,.38),rgba(12,4,2,.8)),url("assets/walnut-veneer.png") center/cover;box-shadow:inset 0 0 0 1px #9c572b,inset 0 4px 15px #000,0 2px #bd7838;text-align:center;
 }
-.valve-window{width:100%;height:122px;display:flex;align-items:flex-end;justify-content:center;gap:5px;padding:11px 4px;border:1px solid #815025;border-radius:42% 42% 8px 8px;background:radial-gradient(ellipse at 50% 80%,rgba(255,91,18,.21),transparent 62%),#100502;box-shadow:inset 0 0 13px #000,0 0 9px rgba(255,83,18,.2)}
-.valve{position:relative;width:27px;height:71px;border:2px solid rgba(210,151,86,.62);border-radius:45% 45% 24% 24%;background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(242,134,54,.13),rgba(255,255,255,.04));box-shadow:inset 0 -13px 14px rgba(255,68,9,.3),0 0 9px rgba(255,73,12,.26)}
-.valve::before{content:"";position:absolute;left:6px;right:6px;bottom:12px;height:25px;border:1px solid #ec7525;border-radius:50%;box-shadow:0 0 8px #f25b14,inset 0 0 5px #ffb13a}
-.valve::after{content:"";position:absolute;left:3px;right:3px;bottom:-9px;height:9px;background:linear-gradient(90deg,#4b2b16,#b28047,#4b2b16);border-radius:0 0 3px 3px}
-.v2{height:82px}.valve-bay>strong{margin-top:15px;font-size:9px;letter-spacing:1px}.valve-bay>small{margin-top:4px;font-size:5px;letter-spacing:1px}
-.vent-slots{width:78%;margin-top:auto}.vent-slots i{display:block;height:3px;margin-top:5px;border-radius:3px;background:#070201;box-shadow:0 1px #653816}
+.valve-window{position:relative;width:100%;height:148px;overflow:hidden;border:2px solid #6e431f;border-radius:36px 36px 7px 7px;background:url("assets/valve-bay.png") center/cover;box-shadow:inset 0 0 15px #000,0 0 0 2px #1c0903,0 0 13px rgba(255,90,20,.28)}
+.valve-window::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(112deg,rgba(255,242,205,.2),transparent 19%,transparent 70%,rgba(255,199,118,.08));box-shadow:inset 0 0 18px rgba(0,0,0,.72);pointer-events:none}
+.valve-photo{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 66%,rgba(255,114,27,.08),transparent 58%)}
+.valve-bay>strong{margin-top:10px;font-size:9px;letter-spacing:1px;text-shadow:0 1px #1a0702}.valve-bay>small{margin-top:4px;color:#9f7546;font-size:5px;letter-spacing:1px}
+.vent-slots{width:78%;margin-top:auto}.vent-slots i{display:block;height:4px;margin-top:5px;border-radius:3px;background:#070201;box-shadow:0 1px #75401c,inset 0 1px #000}
 
 /* Deck de controle completamente diferente do painel digital. */
-.tube-control-deck{min-height:89px;display:grid;grid-template-columns:1fr 1fr 1.18fr .82fr;gap:8px;padding:7px 9px;border:3px solid #321507;border-radius:10px;background:linear-gradient(180deg,#d0aa69,#90622e);box-shadow:inset 0 1px #efd293,inset 0 -4px 7px rgba(60,24,3,.38),0 3px 5px rgba(20,6,1,.5)}
+.tube-control-deck{min-height:89px;display:grid;grid-template-columns:1fr 1fr 1.18fr .82fr;gap:8px;padding:7px 9px;border:4px solid #321507;border-radius:10px;background:linear-gradient(180deg,rgba(221,183,118,.88),rgba(128,76,35,.8)),url("assets/walnut-veneer.png") center/cover;box-shadow:inset 0 1px #f1d29b,inset 0 -5px 9px rgba(48,17,3,.55),0 4px 6px rgba(20,6,1,.62)}
 .tube-knob-control,.tube-stop-control{position:relative;display:flex;flex-direction:column;align-items:center;padding-top:2px;border-right:1px solid rgba(83,43,12,.38)}
 .tube-knob-control>small{margin-top:2px;color:#755024;font-size:5px;letter-spacing:1px}
 .knob-line{flex:1;width:100%;display:flex;align-items:center;justify-content:center;gap:5px}
@@ -224,7 +218,7 @@ body{
 
 /* Painel de serviço: outra composição, em cartões 2x2. */
 .service-cabinet{gap:10px}
-.service-cloth{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:3px solid #301507;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(62,33,14,.2) 0 1px,transparent 1px 5px),repeating-linear-gradient(-45deg,rgba(255,223,158,.12) 0 1px,transparent 1px 6px),linear-gradient(#aa895b,#735738);box-shadow:inset 0 0 18px #37210f}
+.service-cloth{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:7px solid #301507;border-radius:10px;background:linear-gradient(rgba(87,54,27,.22),rgba(48,29,14,.35)),url("assets/speaker-cloth.png") center/cover;box-shadow:inset 0 0 24px #37210f,0 2px 5px rgba(28,8,1,.65)}
 .service-plaque{height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid #563319;border-radius:7px;color:#3d210d;background:linear-gradient(#e3ca94,#b89155);box-shadow:inset 0 1px #fff0c0,0 2px 3px rgba(31,11,2,.42)}
 .service-plaque strong{font-size:15px;font-style:italic;letter-spacing:2px}.service-plaque small{margin-top:5px;font-size:6px;letter-spacing:1.5px}
 .service-grid{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px}
@@ -240,12 +234,12 @@ body{
 .fault-window>strong{color:#efbe70;font-size:22px;font-style:italic;letter-spacing:3px}.error-message{max-width:470px;font-size:15px;line-height:1.4}.fault-window>small{color:#9e6f3d;font-size:6px;letter-spacing:1.4px}
 
 @media(max-width:900px){
-  .tube-page{padding-left:15px;padding-right:15px}.tube-stage{grid-template-columns:110px minmax(0,1fr) 95px}.speaker-cone{width:86px;height:86px}.tube-control-deck{grid-template-columns:1fr 1fr 1.2fr .8fr}.service-row{grid-template-columns:minmax(0,1fr) 125px}
+  .tube-page{padding-left:15px;padding-right:15px}.tube-stage{grid-template-columns:110px minmax(0,1fr) 95px}.speaker-shadow.woofer{width:90px;height:90px}.tube-control-deck{grid-template-columns:1fr 1fr 1.2fr .8fr}.service-row{grid-template-columns:minmax(0,1fr) 125px}
 }
 @media(max-height:680px){
   .tube-page{padding-top:7px;padding-bottom:9px}.tube-cabinet{padding-top:8px;gap:6px}.tube-masthead{min-height:48px}.crest-monogram{width:34px;height:34px}.tube-crest strong{font-size:18px}
   .tube-stage{grid-template-columns:125px minmax(0,1fr) 105px;gap:7px}.tuning-window{min-height:81px;padding:22px 12px 13px}.mechanical-scale{top:6px}.drum-frame{height:42px;padding:3px 29px}.voice-drum{height:32px;font-size:17px}.tube-bank-panel{min-height:37px}.tab{height:26px}
-  .tube-voice-panel{min-height:135px}.grid{gap:5px 7px}.inst{min-height:36px}.valve-window{height:95px}.valve{height:56px}.v2{height:65px}
+  .tube-voice-panel{min-height:135px}.grid{gap:5px 7px}.inst{min-height:36px}.valve-window{height:108px}
   .tube-control-deck{min-height:77px;padding-top:4px;padding-bottom:4px}.knob-step{width:32px;height:32px}.analog-meter{height:38px}.analog-meter::before{height:27px}.stop-key{height:38px}.tube-footer{display:none}
   .service-plaque{height:43px}.service-cloth{padding:8px;gap:7px}.service-grid{gap:7px}.service-row{grid-template-rows:29px 36px;padding:6px 9px;gap:4px 8px}.settings-value,.settings-select,.tube-theme-sample{height:36px;padding:7px 10px}.service-row .ivory-key{height:36px}
 }
