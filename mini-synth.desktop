@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Mini Synth
+GenericName=Instrumento Musical
+Comment=Transforme seu teclado MIDI em um instrumento simples e divertido
+# Ajuste os caminhos abaixo para o local onde você colocou o projeto.
+Exec=/home/alexandro/Projetos/MusicBox/run.sh
+Icon=/home/alexandro/Projetos/MusicBox/assets/icon.png
+Terminal=false
+Categories=Audio;Music;AudioVideo;
+Keywords=midi;piano;synth;fluidsynth;teclado;música;
+StartupNotify=true

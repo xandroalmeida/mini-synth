@@ -1,0 +1,144 @@
+# Configuração do Mini Synth.
+# Os números de banco/programa MIDI vivem SOMENTE aqui — nunca no código.
+
+soundfont:
+  # Caminho da SoundFont padrão. Se não existir, o app procura automaticamente
+  # em /usr/share/sounds/sf2, /usr/share/sounds/sf3, /usr/share/soundfonts e
+  # ~/SoundFonts.
+  path: "/usr/share/sounds/sf2/FluidR3_GM.sf2"
+
+audio:
+  # Driver de saída: "pulseaudio" funciona sobre o PipeWire (pipewire-pulse).
+  # Alternativas: "alsa", "jack", "sdl2".
+  driver: "pulseaudio"
+  gain: 0.8
+  sample_rate: 44100
+  buffer_size: 256
+
+midi:
+  auto_connect: true
+  preferred_device: ""
+
+interface:
+  fullscreen: false
+  columns: 4
+
+# Controles do teclado (knobs).
+# Este teclado (chip Holtek) muda o que os knobs enviam conforme o banco/modo:
+# já vimos o A1 mandar Program Change, CC 1 e CC 91 em momentos diferentes.
+# Por isso tratamos TODOS os casos:
+#   - Program Change (modo mais comum do A1) -> troca o instrumento (abaixo);
+#   - CCs mapeados individualmente em 'knobs'.
+# Descubra os CCs do seu com: `python scripts/midi-monitor.py`
+# Ações possíveis: instrument, volume, reverb, octave, none.
+controls:
+  # Se o A1 enviar Program Change (0xC0), ele troca o instrumento.
+  # Mapeamento direto: valor 1 -> 1º instrumento, ..., 12 -> 12º.
+  # Acima de 12, fica no último (não avança).
+  program_change_selects_instrument: true
+  knobs:
+    - cc: 1           # knob A1 (confirmado AO VIVO: envia CC 1)
+      label: "A1"
+      action: instrument   # girar A1 troca o instrumento
+    # Os CCs abaixo apareceram na captura anterior (outro banco do teclado).
+    # Ficam mapeados também para cobrir os dois bancos; ajuste se necessário.
+    - cc: 91
+      label: "knob"
+      action: volume
+    - cc: 93
+      label: "knob"
+      action: reverb
+    - cc: 74
+      label: "knob"
+      action: octave
+    - cc: 73
+      label: "knob"
+      action: volume
+    - cc: 72
+      label: "knob"
+      action: reverb
+
+instruments:
+  - id: grand_piano
+    label: "PIANO"
+    display_name: "Grand Piano"
+    bank: 0
+    program: 0
+    icon: "piano"
+
+  - id: electric_piano
+    label: "E.PIANO"
+    display_name: "Electric Piano"
+    bank: 0
+    program: 4
+    icon: "electric-piano"
+
+  - id: organ
+    label: "ÓRGÃO"
+    display_name: "Órgão"
+    bank: 0
+    program: 19
+    icon: "organ"
+
+  - id: strings
+    label: "STRINGS"
+    display_name: "Strings"
+    bank: 0
+    program: 48
+    icon: "strings"
+
+  - id: synth
+    label: "SYNTH"
+    display_name: "Synth Lead"
+    bank: 0
+    program: 80
+    icon: "synth"
+
+  - id: pad
+    label: "PAD"
+    display_name: "Warm Pad"
+    bank: 0
+    program: 89
+    icon: "pad"
+
+  - id: brass
+    label: "BRASS"
+    display_name: "Synth Brass"
+    bank: 0
+    program: 62
+    icon: "brass"
+
+  - id: guitar
+    label: "GUITARRA"
+    display_name: "Clean Guitar"
+    bank: 0
+    program: 27
+    icon: "guitar"
+
+  - id: bass
+    label: "BAIXO"
+    display_name: "Electric Bass"
+    bank: 0
+    program: 33
+    icon: "bass"
+
+  - id: xylophone
+    label: "XYLOPHONE"
+    display_name: "Xylophone"
+    bank: 0
+    program: 13
+    icon: "xylophone"
+
+  - id: choir
+    label: "CHOIR"
+    display_name: "Choir"
+    bank: 0
+    program: 52
+    icon: "choir"
+
+  - id: effects
+    label: "EFEITOS"
+    display_name: "Sound Effects"
+    bank: 0
+    program: 103
+    icon: "effects"
