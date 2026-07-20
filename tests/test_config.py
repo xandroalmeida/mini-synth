@@ -172,6 +172,23 @@ def test_user_settings_roundtrip(tmp_path: Path) -> None:
     assert reloaded.last_instrument == "organ"
 
 
+def test_user_settings_bank_instruments_roundtrip(tmp_path: Path) -> None:
+    # O último instrumento por banco deve persistir.
+    path = tmp_path / "settings.yaml"
+    original = UserSettings(
+        last_bank="cordas",
+        bank_instruments={"teclas": "harpsichord", "cordas": "violin"},
+    )
+    loader.save_user_settings(original, path)
+    reloaded = loader.load_user_settings(path)
+    assert reloaded.last_bank == "cordas"
+    assert reloaded.bank_instruments == {"teclas": "harpsichord", "cordas": "violin"}
+
+
+def test_user_settings_bank_instruments_default_empty() -> None:
+    assert UserSettings().bank_instruments == {}
+
+
 def test_user_settings_clamps_and_quantizes() -> None:
     s = UserSettings(volume=250, reverb=40, octave=9)
     assert s.volume == 100

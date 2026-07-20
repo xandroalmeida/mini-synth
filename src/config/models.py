@@ -298,6 +298,9 @@ class UserSettings:
     octave: int = 0
     last_instrument: str = ""
     last_bank: str = ""
+    #: Último instrumento usado em CADA banco: {bank_id: instrument_id}. Assim,
+    #: ao voltar a um banco, lembramos de onde a criança parou nele.
+    bank_instruments: dict[str, str] = field(default_factory=dict)
     last_soundfont: str = ""
     preferred_midi_device: str = ""
     fullscreen: bool = False
@@ -306,6 +309,10 @@ class UserSettings:
         self.volume = max(0, min(100, int(self.volume)))
         self.reverb = self._quantize_reverb(int(self.reverb))
         self.octave = max(-2, min(2, int(self.octave)))
+        # Garante {str: str} mesmo se o YAML vier com tipos estranhos.
+        self.bank_instruments = {
+            str(k): str(v) for k, v in (self.bank_instruments or {}).items()
+        }
 
     @staticmethod
     def _quantize_reverb(value: int) -> int:
@@ -321,6 +328,7 @@ class UserSettings:
             octave=int(data.get("octave", 0)),
             last_instrument=str(data.get("last_instrument", "") or ""),
             last_bank=str(data.get("last_bank", "") or ""),
+            bank_instruments=dict(data.get("bank_instruments") or {}),
             last_soundfont=str(data.get("last_soundfont", "") or ""),
             preferred_midi_device=str(data.get("preferred_midi_device", "") or ""),
             fullscreen=bool(data.get("fullscreen", False)),
@@ -333,6 +341,7 @@ class UserSettings:
             "octave": self.octave,
             "last_instrument": self.last_instrument,
             "last_bank": self.last_bank,
+            "bank_instruments": self.bank_instruments,
             "last_soundfont": self.last_soundfont,
             "preferred_midi_device": self.preferred_midi_device,
             "fullscreen": self.fullscreen,

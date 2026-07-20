@@ -195,15 +195,17 @@ class Application(QObject):
             self._current_bank = bank
             self.window.set_current_bank(bank)
         self._settings.last_instrument = instrument.id
-        if self._current_bank is not None:
-            self._settings.last_bank = self._current_bank.id
+        if bank is not None:
+            self._settings.last_bank = bank.id
+            # Lembra o último instrumento usado neste banco.
+            self._settings.bank_instruments[bank.id] = instrument.id
         self._persist()
 
     def _on_bank_selected(self, bank_id: str) -> None:
         self._select_bank(self._config.bank_by_id(bank_id))
 
     def _select_bank(self, bank: Bank | None) -> None:
-        """Troca o banco exibido e garante um instrumento dele tocando."""
+        """Troca o banco exibido e restaura o instrumento lembrado dele."""
         if bank is None:
             return
         self._current_bank = bank
@@ -211,11 +213,25 @@ class Application(QObject):
         self._settings.last_bank = bank.id
         cur = self._synth.current_instrument if self._synth is not None else None
         already_in_bank = cur is not None and self._config.bank_of_instrument(cur) is bank
-        if not already_in_bank and bank.instruments:
-            # Ao entrar num banco novo, já toca o 1º instrumento dele.
-            self._on_instrument_selected(bank.instruments[0])
+        if not already_in_bank:
+            # Ao entrar no banco, retoma o último instrumento usado nele
+            # (ou o 1º, se ainda não houver histórico).
+            target = self._remembered_instrument(bank)
+            if target is not None:
+                self._on_instrument_selected(target)
+            else:
+                self._persist()
         else:
             self._persist()
+
+    def _remembered_instrument(self, bank: Bank) -> Instrument | None:
+        """Instrumento a retomar ao entrar no banco: o último lembrado ou o 1º."""
+        remembered_id = self._settings.bank_instruments.get(bank.id)
+        if remembered_id:
+            inst = self._config.instrument_by_id(remembered_id)
+            if inst is not None and self._config.bank_of_instrument(inst) is bank:
+                return inst
+        return bank.instruments[0] if bank.instruments else None
 
     def _on_volume(self, direction: int) -> None:
         if self._synth is None:

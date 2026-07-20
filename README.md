@@ -167,8 +167,9 @@ O CC do A2 depende do teclado — confirme com `midi-monitor.py` e ajuste.
 ### Preferências do usuário — `~/.config/mini-synth/settings.yaml`
 
 Criado automaticamente. Persiste entre execuções: **volume, reverb, oitava,
-último instrumento, último banco, última SoundFont, dispositivo MIDI preferido
-e tela cheia.**
+último instrumento, último banco, o último instrumento usado em CADA banco
+(volta de onde parou), última SoundFont, dispositivo MIDI preferido e tela
+cheia.**
 
 ### Logs — `~/.local/state/mini-synth/mini-synth.log`
 

@@ -129,6 +129,29 @@ def test_knob_a1_updates_display(qapp, monkeypatch, fake_midi_cls, tmp_path):
     assert app.window.display_value.text() == expected
 
 
+def test_bank_remembers_last_instrument(qapp, monkeypatch, fake_midi_cls, tmp_path):
+    # Ao voltar a um banco, retoma o último instrumento usado nele (não o 1º).
+    app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
+    bank = next(b for b in config.banks if len(b.instruments) > 1)
+    other = next(b for b in config.banks if b is not bank)
+
+    app._select_bank(bank)
+    app._on_instrument_selected(bank.instruments[1])   # escolhe o 2º do banco
+    assert app._settings.bank_instruments[bank.id] == bank.instruments[1].id
+
+    app._select_bank(other)                            # sai do banco
+    app._select_bank(bank)                             # volta
+    assert synth.current_instrument is bank.instruments[1]   # retomou onde estava
+
+
+def test_bank_first_visit_uses_first_instrument(qapp, monkeypatch, fake_midi_cls, tmp_path):
+    # Sem histórico, o banco começa no 1º instrumento.
+    app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
+    bank = next(b for b in config.banks if len(b.instruments) > 1 and b is not app._current_bank)
+    app._select_bank(bank)
+    assert synth.current_instrument is bank.instruments[0]
+
+
 def test_unmapped_cc_is_forwarded_to_synth(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
     # CC 64 (sustain) não está mapeado -> deve ir para o synth.
