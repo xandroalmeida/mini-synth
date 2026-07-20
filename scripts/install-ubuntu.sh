@@ -54,8 +54,7 @@ check_tools() {
 setup_venv() {
     info "Criando ambiente virtual Python em .venv (--system-site-packages)..."
     # O venv precisa enxergar o PyGObject (gi)/WebKitGTK do apt para o backend
-    # GTK do pywebview funcionar. Se um .venv antigo (sem esse acesso) existir,
-    # recria.
+    # GTK do pywebview funcionar. Se um .venv sem esse acesso existir, recria.
     if [ -d ".venv" ] && ! .venv/bin/python -c "import gi" >/dev/null 2>&1; then
         warn ".venv sem acesso ao 'gi' do sistema; recriando com --system-site-packages..."
         rm -rf .venv

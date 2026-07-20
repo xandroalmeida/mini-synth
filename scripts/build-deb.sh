@@ -4,9 +4,8 @@
 # Estratégia: a interface usa pywebview no backend GTK/WebKit. O WebKitGTK e o
 # PyGObject (gi) vêm de pacotes APT do sistema (Depends), então o venv é criado
 # com --system-site-packages e o pip instala apenas dependências leves
-# (pywebview, python-rtmidi, PyYAML, pyfluidsynth) — nada de PySide6 (~650 MB).
-# O pacote fica pequeno, "Architecture: all", e o download da instalação cai de
-# centenas de MB para poucos MB.
+# (pywebview, python-rtmidi, PyYAML, pyfluidsynth). O pacote fica pequeno,
+# "Architecture: all", e o download da instalação é de poucos MB.
 # Requisito: INTERNET no momento da instalação (pip).
 #
 # Uso:   ./scripts/build-deb.sh
@@ -136,7 +135,7 @@ Comment: As dependências Python (pywebview, python-rtmidi, PyYAML, pyfluidsynth
  --system-site-packages em ${VENVDIR}. O WebKitGTK/PyGObject vêm do apt
  (Depends). A SoundFont vem do pacote apt 'fluid-soundfont-gm' (Depends).
 EOF
-printf '%s (%s) unstable; urgency=low\n\n  * Migração da interface de PySide6 para pywebview (GTK/WebKit): pacote leve.\n\n -- %s  Thu, 01 Jan 1970 00:00:00 +0000\n' \
+printf '%s (%s) unstable; urgency=low\n\n  * Mini Synth: instrumento MIDI para crianças; interface pywebview (GTK/WebKit).\n\n -- %s  Thu, 01 Jan 1970 00:00:00 +0000\n' \
     "${PKG}" "${VERSION}" "${MAINTAINER}" | gzip -9 -n > "${STAGE}/usr/share/doc/${PKG}/changelog.Debian.gz"
 
 ISIZE="$(du -s -k "${STAGE}/usr" | awk '{print $1}')"

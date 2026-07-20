@@ -39,10 +39,9 @@ intercambiáveis:
 3. `mock_backend` — para os testes automatizados.
 
 A interface é uma página web (`assets/web/`) renderizada pelo **pywebview** no
-WebKitGTK do sistema — **sem Qt**. Toda a aparência é HTML/CSS + `<canvas>`,
-**sem imagens externas**: os botões, o faceplate de metal e os LEDs são CSS
-(gradiente + box-shadow) e o visor dot-matrix é desenhado ponto a ponto num
-canvas.
+WebKitGTK do sistema. Toda a aparência é HTML/CSS + `<canvas>`, **sem imagens
+externas**: os botões, o faceplate de metal e os LEDs são CSS (gradiente +
+box-shadow) e o visor dot-matrix é desenhado ponto a ponto num canvas.
 
 ## 📦 Instalação via pacote .deb (recomendado para usuários)
 
@@ -58,8 +57,7 @@ ambiente Python isolado em `/opt/mini-synth/venv` (com `--system-site-packages`)
 e baixa via **pip** apenas bibliotecas leves: `pywebview`, `python-rtmidi`,
 `PyYAML` e `pyfluidsynth`. O resto vem do apt (`python3-gi`, `gir1.2-webkit2-4.1`
 e `gir1.2-gtk-3.0` para a interface; `libfluidsynth3` e `fluid-soundfont-gm`
-para o som). Nada de PySide6 — o download da instalação caiu de ~650 MB para
-poucos MB.
+para o som), então o download da instalação é de poucos MB.
 
 Depois é só abrir **Mini Synth** pelo menu de aplicativos. Para remover (também
 apaga o venv): `sudo apt remove mini-synth`. O pacote é `Architecture: all`.
@@ -166,31 +164,45 @@ Muitos teclados baratos **mudam o que os knobs enviam** conforme o banco/modo
 selecionado — o mesmo knob pode mandar **Program Change** num modo e
 **Control Change (CC)** em outro. O Mini Synth trata os dois casos.
 
-Descubra o que o seu teclado envia com o monitor:
+Descubra o que o seu teclado envia com os scripts de debug:
 
 ```bash
-python scripts/midi-monitor.py    # gire um knob de cada vez; Ctrl+C encerra
+python scripts/midi-debug.py      # cada comando: bytes crus + descrição humana
+python scripts/midi-monitor.py    # gire um knob de cada vez; resume os CCs
 ```
+
+**Mapeamento confirmado deste teclado** (8 knobs; A2 e B2 estão com defeito):
+
+| Knob | Envia | Ação no app |
+|------|-------|-------------|
+| A1 | Program Change | troca o **banco** |
+| A2 | — (defeito) | — |
+| A3 | CC 91 | troca o **instrumento** |
+| A4 | CC 93 | **volume** |
+| B1 | CC 74 | **oitava** |
+| B2 | — (defeito) | — |
+| B3 | CC 73 | **reverb** |
+| B4 | CC 72 | livre (`none`) |
 
 Configuração na seção `controls` de `config/instruments.yaml`:
 
 ```yaml
 controls:
-  # Program Change (modo comum do knob A1) troca o BANCO:
+  # A1 envia Program Change e troca o BANCO:
   #   valor 1 -> 1º banco ... N -> N-ésimo; acima de N fica no último.
   program_change_selects_bank: true
 
-  # Knobs que enviam CC podem ser mapeados individualmente:
+  # Knobs que enviam CC são mapeados individualmente:
   knobs:
-    - cc: 1
-      action: bank         # A1 rola pelos bancos
-    - cc: 2
-      action: instrument   # A2 rola pelos instrumentos do banco atual
+    - cc: 91
+      action: instrument   # A3 rola pelos instrumentos do banco atual
+    - cc: 93
+      action: volume       # A4
 ```
 
 Ações disponíveis: `bank`, `instrument`, `volume`, `reverb`, `octave` e `none`.
 CCs não mapeados (ex.: pedal de sustain, CC 64) seguem para o sintetizador.
-O CC do A2 depende do teclado — confirme com `midi-monitor.py` e ajuste.
+Os CCs dependem do teclado — confirme com `midi-debug.py` e ajuste.
 
 ### Preferências do usuário — `~/.config/mini-synth/settings.yaml`
 
@@ -248,11 +260,11 @@ src/
   audio/   synthesizer.py  fluidsynth_backend.py  subprocess_backend.py  mock_backend.py  factory.py
   midi/    device_manager.py  alsa.py
   ui/      web_bridge.py      # ponte Python↔interface web (pywebview)
-  util/    signal.py          # Signal síncrono (substitui os Signal do Qt)
+  util/    signal.py          # Signal síncrono (.connect/.emit)
   config/  loader.py  models.py
 assets/web/  index.html  style.css  app.js   # a interface (HTML/CSS/canvas)
 config/  instruments.yaml
-scripts/ install-ubuntu.sh  build-deb.sh  make-icon.py  midi-monitor.py
+scripts/ install-ubuntu.sh  build-deb.sh  make-icon.py  midi-monitor.py  midi-debug.py
 tests/   test_*.py
 ```
 

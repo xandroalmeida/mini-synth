@@ -1,8 +1,7 @@
 """Ponto de entrada. Execute com ``python -m src.main`` ou ``./run.sh``.
 
 Interface em pywebview (backend GTK/WebKit): a janela carrega ``assets/web`` e
-o :class:`~src.ui.web_bridge.WebUiBridge` faz a ponte com o núcleo Python. Sem
-Qt — o pacote fica muito mais leve.
+o :class:`~src.ui.web_bridge.WebUiBridge` faz a ponte com o núcleo Python.
 """
 
 from __future__ import annotations

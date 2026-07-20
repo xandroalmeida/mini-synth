@@ -41,9 +41,8 @@ def organ() -> Instrument:
 
 @pytest.fixture(scope="session")
 def qapp():
-    """Compatibilidade: sem Qt, a interface é web (pywebview). Os testes que
-    recebem ``qapp`` não precisam mais de um QApplication — a fixture existe só
-    para não alterar suas assinaturas."""
+    """Fixture no-op: a interface é web (pywebview) e não precisa de contexto
+    gráfico. Os testes que recebem ``qapp`` a usam apenas como marcador."""
     yield None
 
 

@@ -1,10 +1,8 @@
 """Ponte entre o núcleo Python e a interface web (pywebview).
 
-Substitui o antigo ``MainWindow`` (Qt) mantendo a MESMA interface pública que o
-:class:`~src.application.Application` consumia — sinais (``instrument_selected``,
-``bank_selected``…), ``control_panel``, ``settings_page`` e os métodos
-``set_current_instrument`` / ``set_current_bank`` / ``show_main`` etc. Assim o
-controlador continua igual.
+Expõe ao :class:`~src.application.Application` os sinais (``instrument_selected``,
+``bank_selected``…), o ``control_panel``, a ``settings_page`` e os métodos
+``set_current_instrument`` / ``set_current_bank`` / ``show_main`` etc.
 
 Dois sentidos de comunicação:
 
@@ -55,12 +53,12 @@ class _TextHolder:
     def text(self) -> str:
         return self._text
 
-    def setText(self, text: str) -> None:  # noqa: N802 (API estilo Qt)
+    def setText(self, text: str) -> None:  # noqa: N802 (nome camelCase da API da UI)
         self._text = text
 
 
 class ControlPanelProxy:
-    """Espelha a antiga ``ControlPanel``: sinais de clique + mostradores."""
+    """Painel de controles: sinais de clique + mostradores."""
 
     def __init__(self, bridge: "WebUiBridge") -> None:
         self._bridge = bridge
@@ -91,7 +89,7 @@ class ControlPanelProxy:
 
 
 class SettingsPageProxy:
-    """Espelha a antiga ``SettingsPage``: sinais + preenchimento de campos."""
+    """Página de ajustes: sinais + preenchimento de campos."""
 
     def __init__(self, bridge: "WebUiBridge") -> None:
         self._bridge = bridge
@@ -193,13 +191,13 @@ class Api:
 
 
 class WebUiBridge:
-    """Fachada de interface com a mesma API pública do antigo ``MainWindow``."""
+    """Fachada da interface: API pública consumida pelo ``Application``."""
 
     def __init__(self, config: AppConfig) -> None:
         self.config = config
         self._window = None  # webview.Window, atribuído em attach()
 
-        # sinais equivalentes aos do MainWindow
+        # sinais emitidos para o Application
         self.instrument_selected = Signal()
         self.bank_selected = Signal()
         self.config_requested = Signal()
@@ -244,7 +242,7 @@ class WebUiBridge:
         self._push(f"MS.init({json.dumps(payload, ensure_ascii=False)})")
 
     # ------------------------------------------------------------------
-    # API consumida pelo Application (idêntica à do MainWindow)
+    # API consumida pelo Application
     # ------------------------------------------------------------------
     def set_current_instrument(self, instrument: Instrument) -> None:
         self._current_instrument = instrument
@@ -282,7 +280,7 @@ class WebUiBridge:
     # ------------------------------------------------------------------
     # tela cheia (a janela é gerida pelo pywebview)
     # ------------------------------------------------------------------
-    def isFullScreen(self) -> bool:  # noqa: N802 (API estilo Qt, usada no Application)
+    def isFullScreen(self) -> bool:  # noqa: N802 (nome camelCase usado no Application)
         return self._fullscreen
 
     def set_fullscreen(self, on: bool) -> None:

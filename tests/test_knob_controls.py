@@ -37,12 +37,14 @@ def test_invalid_cc_raises():
         ControlsConfig.from_dict({"knobs": [{"cc": 200, "action": "volume"}]})
 
 
-def test_real_config_maps_a1_to_bank_and_a2_to_instrument():
-    # No modelo de bancos: A1 (CC 1) troca o banco; A2 troca o instrumento.
+def test_real_config_maps_instrument_knob_and_bank_via_program_change():
+    # A1 envia Program Change e troca o banco; nenhum CC é mapeado para 'bank'.
+    # A3 (CC 91) troca o instrumento dentro do banco.
     config = loader.load_app_config()
     mapping = config.controls.action_by_cc()
-    assert mapping.get(1) == "bank"
-    assert "instrument" in mapping.values()
+    assert "bank" not in mapping.values()          # banco vem do Program Change
+    assert mapping.get(91) == "instrument"         # A3
+    assert config.controls.program_change_selects_bank is True
 
 
 # ---- comportamento no Application ---------------------------------------
@@ -77,24 +79,35 @@ def _instrument_cc(config) -> int:
     raise AssertionError("Nenhum knob mapeado para 'instrument' no config.")
 
 
-def test_knob_a1_selects_bank_by_direct_index(qapp, monkeypatch, fake_midi_cls, tmp_path):
+# CC sintético mapeado para 'bank' (o A1 real usa Program Change; aqui exercitamos
+# o caminho genérico CC->banco por índice direto em `_on_control_change`).
+_BANK_CC = 1
+
+
+def _map_bank_cc(app) -> None:
+    app._knob_actions = {**app._knob_actions, _BANK_CC: "bank"}
+
+
+def test_bank_knob_selects_bank_by_direct_index(qapp, monkeypatch, fake_midi_cls, tmp_path):
     # Mapeamento direto: cada valor de CC = um banco (0->1º, 1->2º, ...).
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
+    _map_bank_cc(app)
 
     for i, bank in enumerate(config.banks):
-        app._on_control_change(1, i)   # valor i -> (i+1)-ésimo banco
+        app._on_control_change(_BANK_CC, i)   # valor i -> (i+1)-ésimo banco
         assert app._current_bank is bank
         assert synth.current_instrument is bank.instruments[0]
 
 
-def test_knob_a1_clamps_at_last_bank(qapp, monkeypatch, fake_midi_cls, tmp_path):
+def test_bank_knob_clamps_at_last_bank(qapp, monkeypatch, fake_midi_cls, tmp_path):
     # Acima da quantidade de bancos, trava no último (não altera mais).
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
+    _map_bank_cc(app)
     n = len(config.banks)
-    app._on_control_change(1, n - 1)
+    app._on_control_change(_BANK_CC, n - 1)
     assert app._current_bank is config.banks[-1]
     for value in (n, n + 3, 100, 127):
-        app._on_control_change(1, value)
+        app._on_control_change(_BANK_CC, value)
         assert app._current_bank is config.banks[-1]
 
 
@@ -122,9 +135,10 @@ def test_knob_a3_clamps_at_last_instrument(qapp, monkeypatch, fake_midi_cls, tmp
         assert synth.current_instrument is bank.instruments[-1]
 
 
-def test_knob_a1_updates_display(qapp, monkeypatch, fake_midi_cls, tmp_path):
+def test_bank_knob_updates_display(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
-    app._on_control_change(1, 127)    # trava no último banco -> mostra seu 1º instrumento
+    _map_bank_cc(app)
+    app._on_control_change(_BANK_CC, 127)  # trava no último banco -> mostra seu 1º instrumento
     expected = config.banks[-1].instruments[0].display_name.upper()
     assert app.window.display_value.text() == expected
 
@@ -161,9 +175,10 @@ def test_unmapped_cc_is_forwarded_to_synth(qapp, monkeypatch, fake_midi_cls, tmp
 
 def test_mapped_instrument_cc_not_forwarded_as_synth_cc(qapp, monkeypatch, fake_midi_cls, tmp_path):
     app, synth, backend, config = _make_app(qapp, monkeypatch, fake_midi_cls, tmp_path)
-    app._on_control_change(1, 64)
-    # CC 1 mapeado para 'instrument' não deve virar um cc() no synth.
-    assert not any(cc == 1 for (_ch, cc, _v) in backend.control_changes)
+    cc = _instrument_cc(config)          # A3 (CC 91) mapeado para 'instrument'
+    app._on_control_change(cc, 64)
+    # CC mapeado para uma ação não deve virar um cc() no synth.
+    assert not any(c == cc for (_ch, c, _v) in backend.control_changes)
 
 
 # ---- Program Change (knob A1 em modo PC) troca o BANCO ------------------

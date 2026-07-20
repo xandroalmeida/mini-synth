@@ -24,43 +24,47 @@ interface:
   columns: 4
 
 # Controles do teclado (knobs).
-# Modelo de navegação: o knob A1 troca o BANCO (categoria) e o A3 troca o
-# INSTRUMENTO dentro do banco. Assim cabem dezenas de sons sem lotar a tela.
-# (Neste teclado o A1=CC 1 e o A3=CC 91 — confirmados ao vivo; o A2 fica mudo.)
+# ---------------------------------------------------------------------------
+# MAPEAMENTO FÍSICO CONFIRMADO (ao vivo, com scripts/midi-debug.py).
+# Este teclado tem 8 knobs em duas fileiras (A1..A4 em cima, B1..B4 embaixo):
 #
-# Este teclado (chip Holtek) muda o que os knobs enviam conforme o banco/modo:
-# já vimos o A1 mandar Program Change, CC 1 e CC 91 em momentos diferentes.
-# Por isso tratamos TODOS os casos:
-#   - Program Change (modo mais comum do A1) -> troca o BANCO (abaixo);
-#   - CCs mapeados individualmente em 'knobs'.
-# Descubra os CCs do seu com: `python scripts/midi-monitor.py`
+#   Knob | Envia            | Significado MIDI          | Ação no app
+#   -----+------------------+---------------------------+-------------------
+#   A1   | Program Change   | troca de programa         | bank  (via PC, abaixo)
+#   A2   | — (nada)         | provável DEFEITO no knob  | —
+#   A3   | CC 91            | Reverb (Effects 1 Depth)  | instrument
+#   A4   | CC 93            | Chorus (Effects 3 Depth)  | volume
+#   B1   | CC 74            | Brightness / Cutoff       | octave
+#   B2   | — (nada)         | provável DEFEITO no knob  | —
+#   B3   | CC 73            | Attack Time               | reverb
+#   B4   | CC 72            | Release Time              | none  (livre/reserva)
+#
+# OBS.: o "Significado MIDI" é o papel PADRÃO daquele CC no protocolo; aqui nós
+# reaproveitamos os knobs para navegar/controlar o app (coluna "Ação no app").
+# A2 e B2 não enviam nada — provável defeito no hardware deste teclado.
+# Reconfira o seu com: `python scripts/midi-debug.py` (ou midi-monitor.py).
 # Ações possíveis: bank, instrument, volume, reverb, octave, none.
 controls:
-  # Se o A1 enviar Program Change (0xC0), ele troca o BANCO.
+  # A1 envia Program Change (0xC0) -> troca o BANCO.
   # Mapeamento direto: valor 1 -> 1º banco, ..., N -> N-ésimo. Acima, fica no último.
   program_change_selects_bank: true
   knobs:
-    - cc: 1           # knob A1 (confirmado AO VIVO: envia CC 1)
-      label: "A1"
-      action: bank         # girar A1 troca o BANCO
-    - cc: 91          # knob A3 (confirmado AO VIVO: sweep limpo 0..127 em CC 91)
-      label: "A3"          # OBS: o A2 deste teclado fica MUDO neste modo.
+    # A1 não aparece aqui: ele manda Program Change, tratado acima.
+    - cc: 91          # A3
+      label: "A3"
       action: instrument   # girar A3 troca o INSTRUMENTO dentro do banco
-    # Os CCs abaixo apareceram em capturas anteriores (outros bancos do teclado).
-    # Ficam mapeados para cobrir os vários modos; ajuste se necessário.
-    # (CC 91 NÃO fica no volume — é o A3, usado para instrumento acima.)
-    - cc: 93
-      label: "knob"
-      action: reverb
-    - cc: 74
-      label: "knob"
-      action: octave
-    - cc: 73
-      label: "knob"
+    - cc: 93          # A4
+      label: "A4"
       action: volume
-    - cc: 72
-      label: "knob"
+    - cc: 74          # B1
+      label: "B1"
+      action: octave
+    - cc: 73          # B3
+      label: "B3"
       action: reverb
+    - cc: 72          # B4 — sem ação por ora (mude para volume/reverb/etc. se quiser)
+      label: "B4"
+      action: none
 
 # ===========================================================================
 # BANCOS (categorias). O A1 percorre os bancos; o A2, os instrumentos do banco.

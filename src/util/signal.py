@@ -1,10 +1,7 @@
-"""Sinal síncrono mínimo (substitui os ``Signal`` do Qt).
+"""Sinal síncrono mínimo (``.connect(fn)`` / ``.emit(*args)``).
 
-Mesma interface usada no código antigo — ``.connect(fn)`` e ``.emit(*args)`` —
-para que a migração de PySide6 para pywebview não exija reescrever a fiação de
-eventos entre MIDI, síntese e interface. É síncrono: ``emit`` chama cada
-inscrito na hora, na thread que emitiu (igual a uma ``Signal`` Qt de conexão
-direta).
+Liga os eventos entre MIDI, síntese e interface. É síncrono: ``emit`` chama
+cada inscrito na hora, na thread que emitiu.
 """
 
 from __future__ import annotations
