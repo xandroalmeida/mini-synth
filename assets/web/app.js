@@ -54,7 +54,7 @@ function normalize(t){
   return (t || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toUpperCase();
 }
 
-/* Desenha texto como matriz de pontos luminosa (porte fiel do paintEvent). */
+/* Desenha uma matriz física completa e acende nela os pontos do texto. */
 function drawVfd(canvas, rawText, maxDot){
   if(!canvas) return;
   const text = normalize(rawText);
@@ -75,24 +75,47 @@ function drawVfd(canvas, rawText, maxDot){
   const availW = Math.max(1, w-2*pad), availH = Math.max(1, h-2*pad);
   let dot = Math.min(availW/totalCols, availH/GH, maxDot);
   dot = Math.max(dot, 1);
-  const gridW = totalCols*dot, gridH = GH*dot;
-  const x0 = (w-gridW)/2, y0 = (h-gridH)/2, r = dot*0.42;
+  /*
+   * O passo dos pontos ainda é calculado para o texto sempre caber, mas a
+   * matriz apagada ocupa o visor inteiro. Isso faz o canvas parecer um módulo
+   * VFD real mesmo quando exibe somente um algarismo.
+   */
+  const panelCols = Math.max(totalCols, Math.floor(availW/dot));
+  const panelRows = Math.max(GH, Math.floor(availH/dot));
+  const panelW = panelCols*dot, panelH = panelRows*dot;
+  const panelX = (w-panelW)/2, panelY = (h-panelH)/2;
+  const textCol = Math.floor((panelCols-totalCols)/2);
+  const textRow = Math.floor((panelRows-GH)/2);
+  const r = dot*0.42;
+
+  /* Fósforo apagado: presente em toda a placa, discreto mas legível. */
+  ctx.fillStyle = "#3d8c76";
+  for(let row=0; row<panelRows; row++){
+    for(let col=0; col<panelCols; col++){
+      const dx = panelX + col*dot + dot/2;
+      const dy = panelY + row*dot + dot/2;
+      ctx.globalAlpha = 0.17;
+      ctx.beginPath(); ctx.arc(dx,dy,r*0.72,0,7); ctx.fill();
+      ctx.globalAlpha = 0.09;
+      ctx.fillStyle = "#b5ffe9";
+      ctx.beginPath(); ctx.arc(dx-r*0.18,dy-r*0.18,r*0.23,0,7); ctx.fill();
+      ctx.fillStyle = "#3d8c76";
+    }
+  }
+  ctx.globalAlpha = 1;
 
   for(let ci=0; ci<text.length; ci++){
     const glyph = FONT[text[ci]] || FONT[" "];
-    const cx = x0 + ci*(GW+GAP)*dot;
+    const cx = panelX + (textCol + ci*(GW+GAP))*dot;
     for(let row=0; row<GH; row++){
       for(let col=0; col<GW; col++){
-        const dx = cx + col*dot + dot/2, dy = y0 + row*dot + dot/2;
+        const dx = cx + col*dot + dot/2;
+        const dy = panelY + (textRow+row)*dot + dot/2;
         if(glyph[row][col] === "#"){
           ctx.fillStyle = VFD_GLOW; ctx.globalAlpha = 110/255;
           ctx.beginPath(); ctx.arc(dx,dy,r*1.8,0,7); ctx.fill();
           ctx.globalAlpha = 1; ctx.fillStyle = VFD_TEXT;
           ctx.beginPath(); ctx.arc(dx,dy,r,0,7); ctx.fill();
-        } else {
-          ctx.fillStyle = VFD_TEXT; ctx.globalAlpha = 26/255;
-          ctx.beginPath(); ctx.arc(dx,dy,r*0.8,0,7); ctx.fill();
-          ctx.globalAlpha = 1;
         }
       }
     }
@@ -130,11 +153,12 @@ const MS = {
     const stack = document.getElementById("grid-stack");
     tabs.innerHTML = ""; stack.innerHTML = "";
 
-    this._state.banks.forEach(bank => {
+    this._state.banks.forEach((bank, bankIndex) => {
       const tab = document.createElement("button");
       tab.className = "btn dark tab";
       tab.textContent = bank.label;
       tab.dataset.bank = bank.id;
+      tab.dataset.number = String(bankIndex + 1).padStart(2, "0");
       tab.onclick = () => call("select_bank", bank.id);
       tabs.appendChild(tab);
 
@@ -142,10 +166,11 @@ const MS = {
       grid.className = "grid";
       grid.dataset.bank = bank.id;
       grid.style.gridTemplateColumns = "repeat(" + columns + ", 1fr)";
-      bank.instruments.forEach(inst => {
+      bank.instruments.forEach((inst, instIndex) => {
         const b = document.createElement("button");
         b.className = "btn dark inst";
         b.dataset.inst = inst.id;
+        b.dataset.number = String(instIndex + 1).padStart(2, "0");
         // 'icon' no YAML é um NOME de ícone (ex.: "piano"), não um glifo —
         // não é texto para exibir. O botão mostra só o label (como o UI antigo).
         b.textContent = inst.label;
@@ -240,6 +265,7 @@ function wireStatic(){
   document.getElementById("btn-choose-sf").onclick = () => call("choose_soundfont");
   document.getElementById("btn-rescan").onclick  = () => call("rescan");
   document.getElementById("btn-test").onclick    = () => call("test_sound");
+  document.getElementById("btn-panic").onclick   = () => call("panic");
   document.getElementById("set-midi").onchange   = (e) => call("select_midi", e.target.value);
 
   document.querySelectorAll(".pm").forEach(btn => {
